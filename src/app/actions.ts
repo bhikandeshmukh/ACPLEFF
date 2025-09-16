@@ -36,7 +36,7 @@ export async function submitRecord(data: EmployeeRecord) {
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: clientEmail,
-        private_key: privateKey,
+        private_key: privateKey.replace(/\\n/g, '\n'),
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
