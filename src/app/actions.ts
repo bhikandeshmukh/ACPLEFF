@@ -65,11 +65,18 @@ export async function submitRecord(data: EmployeeRecord) {
       message: "Record submitted successfully to Google Sheets!",
       data: recordToSave,
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to save record to Google Sheets:", error);
+    
+    // Provide more specific error feedback
+    let errorMessage = "An unexpected error occurred while saving to Google Sheets.";
+    if (error.message) {
+      errorMessage += ` (Details: ${error.message})`;
+    }
+
     return {
       success: false,
-      error: "An unexpected error occurred while saving to Google Sheets.",
+      error: errorMessage,
     };
   }
 }
