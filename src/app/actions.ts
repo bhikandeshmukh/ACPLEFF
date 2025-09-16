@@ -25,8 +25,7 @@ export async function submitRecord(data: EmployeeRecord) {
   };
 
   try {
-    // Ensure the private key is correctly formatted
-    const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
 
     if (!privateKey) {
       throw new Error("Google Sheets private key is not configured.");
@@ -35,7 +34,7 @@ export async function submitRecord(data: EmployeeRecord) {
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-        private_key: privateKey,
+        private_key: privateKey.replace(/\\n/g, "\n"),
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
