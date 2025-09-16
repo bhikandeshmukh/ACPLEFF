@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { google } from "googleapis";
 import { format } from "date-fns";
 import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
-import "dotenv/config";
 
 export async function submitRecord(data: EmployeeRecord) {
   const validatedFields = EmployeeRecordSchema.safeParse(data);
@@ -34,11 +33,7 @@ export async function submitRecord(data: EmployeeRecord) {
   };
 
   try {
-    const sheetId = process.env.SHEET_ID;
-
-    if (!sheetId) {
-      throw new Error("SHEET_ID is not configured correctly in .env.local.");
-    }
+    const sheetId = "1AfnMnFXpQQEuOn5y7bH9nHaAp5OCSG-OBGUHuPl7dNQ";
     
     // Construct credentials object directly
     const credentials = {
