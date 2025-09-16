@@ -4,6 +4,7 @@ export const EmployeeRecordSchema = z.object({
   employeeName: z.string().min(1, { message: "Please select your name." }),
   portalName: z.string().min(1, { message: "Please select a portal." }),
   taskName: z.string().min(3, { message: "Task name must be at least 3 characters." }),
+  itemQty: z.coerce.number().min(1, { message: "Item quantity must be at least 1." }),
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
   remarks: z.string().optional(),

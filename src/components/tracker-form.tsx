@@ -11,6 +11,7 @@ import {
   Send,
   User,
   Globe,
+  Hash,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ export function TrackerForm() {
       employeeName: "",
       portalName: "",
       taskName: "",
+      itemQty: 0,
       startTime: "",
       endTime: "",
       remarks: "",
@@ -167,6 +169,29 @@ export function TrackerForm() {
                       <Input
                         className="pl-10"
                         placeholder="e.g., Client Follow-up"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="itemQty"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Item Qty</FormLabel>
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <FormControl>
+                      <Input
+                        className="pl-10"
+                        type="number"
+                        placeholder="0"
                         {...field}
                         disabled={isSubmitting}
                       />

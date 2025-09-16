@@ -52,7 +52,7 @@ export async function submitRecord(data: EmployeeRecord) {
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-    const range = "Sheet1!A:H";
+    const range = "Sheet1!A:I";
 
     const values = [
       [
@@ -60,6 +60,7 @@ export async function submitRecord(data: EmployeeRecord) {
         recordToSave.employeeName,
         recordToSave.portalName,
         recordToSave.taskName,
+        recordToSave.itemQty,
         recordToSave.startTime,
         recordToSave.endTime,
         recordToSave.remarks || "",
