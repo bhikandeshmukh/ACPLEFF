@@ -1,4 +1,4 @@
-# 🔥 Firebase Studio
+# 🔥 Efficiency Record
 
 ## ⚡ Quick Start
 A modern NextJS starter kit integrated with Firebase services.
