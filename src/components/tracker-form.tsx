@@ -13,6 +13,7 @@ import {
   User,
   AlertCircle,
   CheckCircle2,
+  Globe,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
 import { submitRecord } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+const portals = ["AMAZON", "MYNTRA", "FLIPKART", "AJIO"];
+
 export function TrackerForm() {
   const { toast } = useToast();
   const [locationStatus, setLocationStatus] = useState<
@@ -58,6 +61,7 @@ export function TrackerForm() {
     resolver: zodResolver(EmployeeRecordSchema),
     defaultValues: {
       employeeName: "",
+      portalName: "",
       taskName: "",
       startTime: "",
       endTime: "",
@@ -143,6 +147,38 @@ export function TrackerForm() {
                       {employees.map((employee) => (
                         <SelectItem key={employee.id} value={employee.name}>
                           {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="portalName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Portal Name</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                    disabled={isSubmitting}
+                  >
+                    <FormControl>
+                      <div className="relative">
+                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <SelectTrigger className="pl-10">
+                          <SelectValue placeholder="Select a portal" />
+                        </SelectTrigger>
+                      </div>
+                    </FormControl>
+                    <SelectContent>
+                      {portals.map((portal) => (
+                        <SelectItem key={portal} value={portal}>
+                          {portal}
                         </SelectItem>
                       ))}
                     </SelectContent>

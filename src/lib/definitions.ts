@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const EmployeeRecordSchema = z.object({
   employeeName: z.string().min(1, { message: "Please select your name." }),
+  portalName: z.string().min(1, { message: "Please select a portal." }),
   taskName: z.string().min(3, { message: "Task name must be at least 3 characters." }),
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
