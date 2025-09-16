@@ -20,10 +20,15 @@ export async function submitRecord(data: EmployeeRecord) {
   const headerList = headers();
   const ip = headerList.get("x-forwarded-for")?.split(",")[0].trim() || "IP Not Found";
   
+  const now = new Date();
+  const utcOffset = now.getTimezoneOffset() * 60000;
+  const istOffset = 330 * 60000; // 5 hours and 30 minutes
+  const istDate = new Date(now.getTime() + utcOffset + istOffset);
+
   const recordToSave = {
     ...validatedFields.data,
     ipAddress: ip,
-    timestamp: format(new Date(), "dd/MM/yyyy hh:mm a"),
+    timestamp: format(istDate, "dd/MM/yyyy hh:mm a"),
   };
 
   try {
