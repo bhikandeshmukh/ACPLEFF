@@ -53,6 +53,39 @@ export async function submitRecord(data: EmployeeRecord) {
 
     const sheets = google.sheets({ version: "v4", auth });
     const range = "Sheet1!A:I";
+    const headerRange = "Sheet1!A1:I1";
+
+    const headerRow = [
+      "Timestamp",
+      "Employee Name",
+      "Portal Name",
+      "Task Name",
+      "Item Qty",
+      "Start Time",
+      "End Time",
+      "Remarks",
+      "IP Address",
+    ];
+
+    // Check for headers
+    const headerResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId: sheetId,
+      range: headerRange,
+    });
+
+    const currentHeaders = headerResponse.data.values?.[0] || [];
+    const headersAreMissing = headerRow.some((header, i) => header !== currentHeaders[i]);
+
+    if (headersAreMissing) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: sheetId,
+        range: headerRange,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [headerRow],
+        },
+      });
+    }
 
     const values = [
       [
@@ -72,6 +105,7 @@ export async function submitRecord(data: EmployeeRecord) {
       spreadsheetId: sheetId,
       range: range,
       valueInputOption: "USER_ENTERED",
+      insertDataOption: "INSERT_ROWS",
       requestBody: {
         values: values,
       },
