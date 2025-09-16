@@ -29,6 +29,8 @@ export async function submitRecord(data: EmployeeRecord) {
     ...validatedFields.data,
     ipAddress: ip,
     timestamp: format(istDate, "dd/MM/yyyy hh:mm a"),
+    startTime: format(new Date(validatedFields.data.startTime), "dd/MM/yy hh:mm a"),
+    endTime: format(new Date(validatedFields.data.endTime), "dd/MM/yy hh:mm a"),
   };
 
   try {
