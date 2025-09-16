@@ -7,10 +7,6 @@ export const EmployeeRecordSchema = z.object({
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
   remarks: z.string().optional(),
-  geolocation: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-  }).optional(),
 }).refine((data) => {
     // only validate if both times are present
     if (data.startTime && data.endTime) {

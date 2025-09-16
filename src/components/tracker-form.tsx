@@ -7,12 +7,9 @@ import {
   ClipboardList,
   Clock,
   Loader2,
-  MapPin,
   MessageSquare,
   Send,
   User,
-  AlertCircle,
-  CheckCircle2,
   Globe,
 } from "lucide-react";
 
@@ -27,7 +24,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -46,17 +42,12 @@ import { useToast } from "@/hooks/use-toast";
 import { employees } from "@/lib/data";
 import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
 import { submitRecord } from "@/app/actions";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const portals = ["AMAZON", "MYNTRA", "FLIPKART", "AJIO"];
 
 export function TrackerForm() {
   const { toast } = useToast();
-  const [locationStatus, setLocationStatus] = useState<
-    "idle" | "requesting" | "success" | "error"
-  >("idle");
-  const [locationError, setLocationError] = useState("");
-
+  
   const form = useForm<EmployeeRecord>({
     resolver: zodResolver(EmployeeRecordSchema),
     defaultValues: {
@@ -71,29 +62,6 @@ export function TrackerForm() {
 
   const { isSubmitting } = form.formState;
 
-  const handleLocationRequest = () => {
-    setLocationStatus("requesting");
-    setLocationError("");
-    if (!navigator.geolocation) {
-      setLocationStatus("error");
-      setLocationError("Geolocation is not supported by your browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        form.setValue("geolocation", { latitude, longitude });
-        setLocationStatus("success");
-      },
-      (error) => {
-        setLocationStatus("error");
-        setLocationError(`Permission denied. ${error.message}`);
-        form.setValue("geolocation", undefined);
-      }
-    );
-  };
-
   async function onSubmit(data: EmployeeRecord) {
     const response = await submitRecord(data);
     if (response.success) {
@@ -103,7 +71,6 @@ export function TrackerForm() {
         variant: "default",
       });
       form.reset();
-      setLocationStatus("idle");
     } else {
       toast({
         title: "Error",
@@ -277,46 +244,6 @@ export function TrackerForm() {
               )}
             />
             
-            <FormItem className="space-y-3 rounded-lg border bg-card p-4">
-              <div className="flex items-start gap-4">
-                 <MapPin className="h-6 w-6 text-accent flex-shrink-0 mt-1" />
-                 <div>
-                    <FormLabel className="font-semibold">Location Tracking (Optional)</FormLabel>
-                    <FormDescription>
-                      For compliance and auditing, we need to log your location. Please grant permission by clicking the button below.
-                    </FormDescription>
-                 </div>
-              </div>
-
-              {locationStatus === 'idle' && (
-                <Button type="button" variant="outline" size="sm" onClick={handleLocationRequest}>
-                  <MapPin className="mr-2 h-4 w-4" /> Share Location
-                </Button>
-              )}
-
-              {locationStatus === 'requesting' && (
-                <Alert variant="default" className="bg-secondary">
-                  <Loader2 className="h-4 w-4 animate-spin"/>
-                  <AlertTitle>Requesting Permission</AlertTitle>
-                  <AlertDescription>Please allow location access in your browser.</AlertDescription>
-                </Alert>
-              )}
-              {locationStatus === 'success' && (
-                 <Alert variant="default" className="border-green-500/50 text-green-700 dark:text-green-400">
-                  <CheckCircle2 className="h-4 w-4 text-green-500"/>
-                  <AlertTitle>Location Captured!</AlertTitle>
-                  <AlertDescription>Your location has been successfully recorded.</AlertDescription>
-                </Alert>
-              )}
-              {locationStatus === 'error' && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4"/>
-                  <AlertTitle>Location Error</AlertTitle>
-                  <AlertDescription>{locationError}</AlertDescription>
-                </Alert>
-              )}
-            </FormItem>
-
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
