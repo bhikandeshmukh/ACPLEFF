@@ -12,7 +12,7 @@ export default function Home() {
           <TrackerForm />
         </main>
         <footer className="mt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} SheetSync Tracker. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ACPL EFFICIENCY RECORDER. All rights reserved.</p>
         </footer>
       </div>
     </div>

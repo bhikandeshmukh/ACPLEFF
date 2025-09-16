@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'SheetSync Tracker',
+  title: 'ACPL EFFICIENCY RECORDER',
   description: 'Track employee efficiency with ease.',
 };
 
