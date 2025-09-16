@@ -44,7 +44,7 @@ import { employees } from "@/lib/data";
 import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
 import { submitRecord } from "@/app/actions";
 
-const portals = ["AMAZON", "MYNTRA", "FLIPKART", "AJIO"];
+const portals = ["AMAZON DF", "ANOUK MYNTRA", "HANUKU MYNTRA", "AJIO BE ACTIVE", "AJIO HANUKU", "AJIO DF", "FLIPKART", "SHOPIFY", "COCOBLU PO", "OTHER"];
 
 export function TrackerForm() {
   const { toast } = useToast();
