@@ -25,14 +25,14 @@ npm run dev
 
 ### 📁 Project Structure
 ```
-firebase-studio/
+Efficiency Record/
 ├── src/
 │   ├── app/
 │   │   └── page.tsx    # Main entry point
 │   ├── components/     # Reusable components
-│   └── styles/        # Global styles
-├── public/            # Static assets
-└── firebase/         # Firebase configuration
+│   └── styles/         # Global styles
+├── public/             # Static assets
+└── firebase/           # Firebase configuration
 ```
 
 ### 🔧 Environment Setup
