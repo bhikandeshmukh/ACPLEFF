@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { google } from "googleapis";
+import { format } from "date-fns";
 import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
 import "dotenv/config";
 
@@ -22,7 +23,7 @@ export async function submitRecord(data: EmployeeRecord) {
   const recordToSave = {
     ...validatedFields.data,
     ipAddress: ip,
-    timestamp: new Date().toISOString(),
+    timestamp: format(new Date(), "dd/MM/yyyy hh:mm a"),
   };
 
   try {
