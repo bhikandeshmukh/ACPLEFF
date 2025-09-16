@@ -26,21 +26,22 @@ export async function submitRecord(data: EmployeeRecord) {
 
   try {
     const privateKey = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
+    const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
+    const sheetId = process.env.SHEET_ID;
 
-    if (!privateKey) {
-      throw new Error("Google Sheets private key is not configured.");
+    if (!privateKey || !clientEmail || !sheetId) {
+      throw new Error("Google Sheets credentials are not configured correctly in .env.local.");
     }
     
     const auth = new google.auth.GoogleAuth({
       credentials: {
-        client_email: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
-        private_key: privateKey.replace(/\\n/g, "\n"),
+        client_email: clientEmail,
+        private_key: privateKey,
       },
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     });
 
     const sheets = google.sheets({ version: "v4", auth });
-    const sheetId = process.env.SHEET_ID;
     const range = "Sheet1!A:H";
 
     // Ensure the order matches the columns in your Google Sheet
@@ -74,7 +75,6 @@ export async function submitRecord(data: EmployeeRecord) {
   } catch (error: any) {
     console.error("Failed to save record to Google Sheets:", error);
     
-    // Provide more specific error feedback
     let errorMessage = "An unexpected error occurred while saving to Google Sheets.";
     if (error.message) {
       errorMessage += ` (Details: ${error.message})`;
