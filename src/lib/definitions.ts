@@ -1,11 +1,18 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 import { z } from "zod";
 
 export const EmployeeRecordSchema = z.object({
   employeeName: z.string().min(1, { message: "Please select your name." }),
   portalName: z.string().min(1, { message: "Please select a portal." }),
+<<<<<<< HEAD
   taskName: z.string().min(1, { message: "Please select a task." }),
   otherTaskName: z.string().optional(),
+=======
+  taskName: z.string().min(3, { message: "Task name must be at least 3 characters." }),
+>>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
   itemQty: z.coerce.number().optional().default(0),
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
@@ -19,6 +26,7 @@ export const EmployeeRecordSchema = z.object({
 }, {
   message: "End time must be after the start time.",
   path: ["endTime"],
+<<<<<<< HEAD
 }).refine((data) => {
   if (data.taskName === "OTHER WORK") {
     return data.otherTaskName && data.otherTaskName.trim().length > 0;
@@ -30,6 +38,10 @@ export const EmployeeRecordSchema = z.object({
 });
 
 
+=======
+});
+
+>>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 export type EmployeeRecord = z.infer<typeof EmployeeRecordSchema>;
 
 export type Employee = {

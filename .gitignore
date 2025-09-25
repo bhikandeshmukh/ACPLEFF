@@ -35,3 +35,8 @@ pnpm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
+=======
+
+#bhikan Deshmukh
+>>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05

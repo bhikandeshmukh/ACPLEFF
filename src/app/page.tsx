@@ -1,5 +1,6 @@
 import { TrackerForm } from '@/components/tracker-form';
 import { Logo } from '@/components/logo';
+<<<<<<< HEAD
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Home } from 'lucide-react';
@@ -20,6 +21,21 @@ export default function TaskPage() {
         </main>
         <footer className="mt-8 text-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Efficiency Recorder.</p>
+=======
+
+export default function Home() {
+  return (
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background p-4 antialiased">
+      <div className="w-full max-w-2xl mx-auto">
+        <header className="mb-8 flex justify-center">
+          <Logo />
+        </header>
+        <main>
+          <TrackerForm />
+        </main>
+        <footer className="mt-8 text-center text-sm text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} ACPL EFFICIENCY RECORDER. All rights reserved.</p>
+>>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
         </footer>
       </div>
     </div>
