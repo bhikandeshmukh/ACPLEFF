@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 
 "use client";
 
@@ -6,13 +5,6 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addSeconds, format } from "date-fns";
-=======
-"use client";
-
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 import {
   ClipboardList,
   Clock,
@@ -22,10 +14,7 @@ import {
   User,
   Globe,
   Hash,
-<<<<<<< HEAD
   Pencil,
-=======
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -54,17 +43,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-<<<<<<< HEAD
 import { employees, portals, tasks, TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS } from "@/lib/config";
 import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
 import { submitRecord } from "@/app/server-actions";
-=======
-import { employees } from "@/lib/data";
-import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
-import { submitRecord } from "@/app/actions";
-
-const portals = ["AMAZON DF", "ANOUK MYNTRA", "HANUKU MYNTRA", "AJIO BE ACTIVE", "AJIO HANUKU", "AJIO DF", "FLIPKART", "SHOPIFY", "COCOBLU PO", "OTHER"];
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 
 export function TrackerForm() {
   const { toast } = useToast();
@@ -75,10 +56,7 @@ export function TrackerForm() {
       employeeName: "",
       portalName: "",
       taskName: "",
-<<<<<<< HEAD
       otherTaskName: "",
-=======
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
       itemQty: 0,
       startTime: "",
       endTime: "",
@@ -86,7 +64,6 @@ export function TrackerForm() {
     },
   });
 
-<<<<<<< HEAD
   const { watch, formState: { isSubmitting }, setValue } = form;
   const watchedTaskName = watch("taskName");
   const watchedStartTime = watch("startTime");
@@ -128,12 +105,6 @@ export function TrackerForm() {
     }
     
     const response = await submitRecord(finalData);
-=======
-  const { isSubmitting } = form.formState;
-
-  async function onSubmit(data: EmployeeRecord) {
-    const response = await submitRecord(data);
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
     if (response.success) {
       toast({
         title: "Success!",
@@ -195,47 +166,27 @@ export function TrackerForm() {
 
             <FormField
               control={form.control}
-<<<<<<< HEAD
               name="taskName"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Task Name</FormLabel>
                    <Select
-=======
-              name="portalName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Portal Name</FormLabel>
-                  <Select
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                     disabled={isSubmitting}
                   >
                     <FormControl>
                       <div className="relative">
-<<<<<<< HEAD
                         <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <SelectTrigger className="pl-10">
                           <SelectValue placeholder="Select a task" />
-=======
-                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <SelectTrigger className="pl-10">
-                          <SelectValue placeholder="Select a portal" />
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
                         </SelectTrigger>
                       </div>
                     </FormControl>
                     <SelectContent>
-<<<<<<< HEAD
                       {tasks.map((task) => (
                         <SelectItem key={task} value={task}>
                           {task}
-=======
-                      {portals.map((portal) => (
-                        <SelectItem key={portal} value={portal}>
-                          {portal}
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -245,7 +196,6 @@ export function TrackerForm() {
               )}
             />
 
-<<<<<<< HEAD
             {watchedTaskName !== "OTHER WORK" && (
                 <FormField
                 control={form.control}
@@ -304,29 +254,6 @@ export function TrackerForm() {
               />
             )}
 
-=======
-            <FormField
-              control={form.control}
-              name="taskName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Name</FormLabel>
-                  <div className="relative">
-                    <ClipboardList className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <FormControl>
-                      <Input
-                        className="pl-10"
-                        placeholder="e.g., Client Follow-up"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
 
             <FormField
               control={form.control}
@@ -342,10 +269,7 @@ export function TrackerForm() {
                         type="number"
                         placeholder="0"
                         {...field}
-<<<<<<< HEAD
                         onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-=======
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
                         disabled={isSubmitting}
                       />
                     </FormControl>
@@ -354,13 +278,8 @@ export function TrackerForm() {
                 </FormItem>
               )}
             />
-<<<<<<< HEAD
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-=======
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
               <FormField
                 control={form.control}
                 name="startTime"
@@ -410,11 +329,7 @@ export function TrackerForm() {
               name="remarks"
               render={({ field }) => (
                 <FormItem>
-<<<<<<< HEAD
                   <FormLabel>Remarks (Chetan)</FormLabel>
-=======
-                  <FormLabel>Other Remarks</FormLabel>
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
                   <div className="relative">
                     <MessageSquare className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <FormControl>

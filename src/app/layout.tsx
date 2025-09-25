@@ -3,11 +3,7 @@ import { Toaster } from "@/components/ui/toaster"
 import './globals.css';
 
 export const metadata: Metadata = {
-<<<<<<< HEAD
   title: 'Efficiency Recorder',
-=======
-  title: 'ACPL EFFICIENCY RECORDER',
->>>>>>> 1ffd1ce4f519a45920aebc1e7b8500617778dd05
   description: 'Track employee efficiency with ease.',
 };
 
