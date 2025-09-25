@@ -196,7 +196,7 @@ export async function submitRecord(data: EmployeeRecord) {
 
   try {
     const sheets = await getSheetsClient();
-    const spreadsheetId = "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
     const sheetName = recordToSave.employeeName;
 
     // 1. Get spreadsheet metadata to check if the sheet exists
@@ -350,7 +350,7 @@ type DateRange = {
 
 export async function getEmployeeReport(dateRange: DateRange, employeeName: string): Promise<EmployeeReport | null> {
   const sheets = await getSheetsClient();
-  const spreadsheetId = "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+  const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
   
   // Ensure dates are Date objects
   const interval = { start: new Date(dateRange.from), end: new Date(dateRange.to) };
