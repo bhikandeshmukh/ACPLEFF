@@ -3,6 +3,7 @@ import type { Employee } from "@/lib/definitions";
 // Configuration for task durations per item
 export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
   "PICKING": 40,
+  "PACKING": 38,
   "GUN": 20,
   "SORTING": 54,
   "RETURN": 65,
@@ -15,6 +16,7 @@ export const DEFAULT_DURATION_SECONDS = 40;
 export const ALL_TASKS = [
   "PICKING",
   "GUN",
+  "PACKING"
   "SORTING",
   "RETURN",
   "COCOBLU PO",
@@ -23,7 +25,7 @@ export const ALL_TASKS = [
 ];
 
 export const portals = ["AMAZON DF", "COCOBLU PO", "MYNTRA-ANOUK", "MYNTRA-HANUKU", "FLIPKART", "AJIO-BE ACTIVE", "AJIO-HANUKU", "SHOPIFY"];
-export const tasks = ["PICKING", "GUN", "SORTING", "RETURN", "COCOBLU PO", "BARCODE, TAGLOOP, BUTTON", "OTHER WORK"];
+export const tasks = ["PICKING", "GUN", "PACKING" "SORTING", "RETURN", "COCOBLU PO", "BARCODE, TAGLOOP, BUTTON", "OTHER WORK"];
 
 export const employees: Employee[] = [
   { id: "1", name: "SAGAR" },
