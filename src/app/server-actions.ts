@@ -1,6 +1,10 @@
 
 "use server";
 
+// Force dynamic rendering - no caching for real-time Google Sheets data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 
 import { google, sheets_v4 } from "googleapis";
 import { format, addSeconds, parse, differenceInSeconds, isWithinInterval } from "date-fns";
@@ -28,10 +32,14 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     const todayStr = format(today, 'dd/MM/yyyy');
     console.log(`Today's date for checking: ${todayStr}`);
     
-    // Get sheet data
+    // Get sheet data (force fresh data, no cache)
     const getSheetResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${employeeName}!A1:ZZ1000`
+      range: `${employeeName}!A1:ZZ1000`,
+      // Add timestamp to force fresh data
+      majorDimension: 'ROWS',
+      valueRenderOption: 'UNFORMATTED_VALUE',
+      dateTimeRenderOption: 'FORMATTED_STRING'
     });
     
     const rows = getSheetResponse.data.values || [];
@@ -275,9 +283,9 @@ async function setupSheetHeaders(sheets: sheets_v4.Sheets, spreadsheetId: string
 }
 
 
-// Check if employee has an active task (from Google Sheets)
+// Check if employee has an active task (from Google Sheets) - Always fresh, no cache
 export async function getActiveTask(employeeName: string): Promise<ActiveTask | null> {
-  console.log(`Checking active task for ${employeeName} from Google Sheets...`);
+  console.log(`Checking active task for ${employeeName} from Google Sheets (no cache)...`);
   const activeTask = await checkActiveTaskFromSheets(employeeName);
   console.log(`Active task for ${employeeName}:`, activeTask);
   return activeTask;
@@ -815,7 +823,7 @@ type DateRange = {
 }
 
 export async function getEmployeeReport(dateRange: DateRange, employeeName: string): Promise<EmployeeReport | null> {
-  console.log('=== Starting getEmployeeReport ===');
+  console.log('=== Starting getEmployeeReport (no cache, fresh Google Sheets data) ===');
   console.log('Employee:', employeeName);
   console.log('Date range:', dateRange);
   
@@ -888,7 +896,11 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     try {
       getSheetResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${employeeName}!A1:ZZ1000`, 
+        range: `${employeeName}!A1:ZZ1000`,
+        // Force fresh data, no cache
+        majorDimension: 'ROWS',
+        valueRenderOption: 'UNFORMATTED_VALUE',
+        dateTimeRenderOption: 'FORMATTED_STRING'
       });
       console.log('Successfully fetched sheet data');
     } catch (apiError: any) {
