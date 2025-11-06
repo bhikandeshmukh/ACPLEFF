@@ -53,6 +53,50 @@ export function EnhancedTrackerForm() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkingActiveTask, setCheckingActiveTask] = useState(false);
+
+  // localStorage keys
+  const ACTIVE_TASK_KEY = "tracker_active_task";
+  const SELECTED_EMPLOYEE_KEY = "tracker_selected_employee";
+
+  // Load from localStorage on component mount
+  useEffect(() => {
+    const savedEmployee = localStorage.getItem(SELECTED_EMPLOYEE_KEY);
+    const savedActiveTask = localStorage.getItem(ACTIVE_TASK_KEY);
+    
+    if (savedEmployee) {
+      setSelectedEmployee(savedEmployee);
+    }
+    
+    if (savedActiveTask) {
+      try {
+        const parsedTask = JSON.parse(savedActiveTask);
+        setActiveTask(parsedTask);
+        console.log("📱 Loaded active task from localStorage:", parsedTask);
+      } catch (error) {
+        console.error("Error parsing saved active task:", error);
+        localStorage.removeItem(ACTIVE_TASK_KEY);
+      }
+    }
+  }, []);
+
+  // Save to localStorage when activeTask or selectedEmployee changes
+  useEffect(() => {
+    if (selectedEmployee) {
+      localStorage.setItem(SELECTED_EMPLOYEE_KEY, selectedEmployee);
+    } else {
+      localStorage.removeItem(SELECTED_EMPLOYEE_KEY);
+    }
+  }, [selectedEmployee]);
+
+  useEffect(() => {
+    if (activeTask) {
+      localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(activeTask));
+      console.log("📱 Saved active task to localStorage:", activeTask);
+    } else {
+      localStorage.removeItem(ACTIVE_TASK_KEY);
+      console.log("📱 Removed active task from localStorage");
+    }
+  }, [activeTask]);
   
   const startForm = useForm<StartTaskRecord>({
     resolver: zodResolver(StartTaskSchema),
@@ -87,14 +131,38 @@ export function EnhancedTrackerForm() {
   useEffect(() => {
     async function checkActiveTask() {
       if (selectedEmployee) {
+        // First check localStorage for active task
+        const savedActiveTask = localStorage.getItem(ACTIVE_TASK_KEY);
+        if (savedActiveTask) {
+          try {
+            const parsedTask = JSON.parse(savedActiveTask);
+            // Verify the saved task belongs to the selected employee
+            if (parsedTask.employeeName === selectedEmployee) {
+              setActiveTask(parsedTask);
+              setEndValue("employeeName", selectedEmployee);
+              console.log("📱 Using active task from localStorage for", selectedEmployee);
+              return; // Skip server check if we have valid localStorage data
+            } else {
+              // Clear localStorage if employee doesn't match
+              localStorage.removeItem(ACTIVE_TASK_KEY);
+            }
+          } catch (error) {
+            console.error("Error parsing saved active task:", error);
+            localStorage.removeItem(ACTIVE_TASK_KEY);
+          }
+        }
+
+        // If no valid localStorage data, check server
         setCheckingActiveTask(true);
         try {
           const active = await getActiveTask(selectedEmployee);
           setActiveTask(active);
           if (active) {
             setEndValue("employeeName", selectedEmployee);
+            console.log("📡 Got active task from server for", selectedEmployee);
           } else {
             setStartValue("employeeName", selectedEmployee);
+            console.log("📡 No active task from server for", selectedEmployee);
           }
         } catch (error) {
           console.error("Error checking active task:", error);
@@ -160,8 +228,15 @@ export function EnhancedTrackerForm() {
         });
         
         // Use the verified activeTask from the response (already checked against Google Sheets)
-        console.log("✅ Setting active task from verified response:", (response as any).activeTask);
-        setActiveTask((response as any).activeTask);
+        const newActiveTask = (response as any).activeTask;
+        console.log("✅ Setting active task from verified response:", newActiveTask);
+        setActiveTask(newActiveTask);
+        
+        // Also save to localStorage for immediate availability
+        if (newActiveTask) {
+          localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(newActiveTask));
+          console.log("📱 Saved new active task to localStorage immediately");
+        }
         
         startForm.reset();
       } else {
@@ -196,16 +271,23 @@ export function EnhancedTrackerForm() {
           variant: "default",
         });
         
+        // Clear active task immediately (both state and localStorage)
+        setActiveTask(null);
+        localStorage.removeItem(ACTIVE_TASK_KEY);
+        console.log("📱 Cleared active task from localStorage immediately");
+        
         // Refresh active task from Google Sheets to ensure no stale data
         if (selectedEmployee) {
           const freshActiveTask = await getActiveTask(selectedEmployee);
           setActiveTask(freshActiveTask);
-        } else {
-          setActiveTask(null);
+          if (freshActiveTask) {
+            localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(freshActiveTask));
+          }
         }
         
         endForm.reset();
         setSelectedEmployee("");
+        localStorage.removeItem(SELECTED_EMPLOYEE_KEY);
       } else {
         console.error("🔴 End task failed:", response.error);
         toast({
@@ -246,7 +328,7 @@ export function EnhancedTrackerForm() {
           }
           <br />
           <span className="text-xs text-muted-foreground mt-1 block">
-            Note: Active task status is maintained during your session.
+            Note: Active task status is saved locally and synced with Google Sheets. No refresh needed after starting a task.
           </span>
         </CardDescription>
       </CardHeader>
