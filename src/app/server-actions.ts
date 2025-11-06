@@ -737,6 +737,7 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     
     const interval = { start: startDate, end: endDate };
     console.log(`Adjusted date range for ${employeeName}: ${interval.start} to ${interval.end}`);
+    console.log(`Looking for dates between: ${format(startDate, 'dd/MM/yyyy')} and ${format(endDate, 'dd/MM/yyyy')}`);
 
   try {
     console.log(`Fetching data for sheet: ${employeeName}`);
@@ -813,6 +814,19 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     console.log(`Found ${dateMatchingRows.length} matching rows for ${employeeName}`);
     if (dateMatchingRows.length === 0) {
         console.log(`No matching rows for date range ${interval.start} to ${interval.end}`);
+        
+        // Show available dates for debugging
+        const availableDates = rows.slice(2).map(row => row[0]).filter(date => date).map(date => {
+          try {
+            const parsed = parse(date.toString().trim(), 'dd/MM/yyyy', new Date());
+            return format(parsed, 'dd/MM/yyyy');
+          } catch {
+            return date;
+          }
+        });
+        console.log(`Available dates in sheet: [${availableDates.join(', ')}]`);
+        console.log(`You searched for: ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);
+        
         return null;
     };
     
