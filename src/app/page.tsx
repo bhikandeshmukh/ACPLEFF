@@ -3,6 +3,10 @@ import Link from 'next/link';
 import { FilePlus, LineChart } from 'lucide-react';
 import { ActiveTaskStatus } from '@/components/active-task-status';
 
+// Force dynamic rendering - no caching for real-time Google Sheets data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">

@@ -4,6 +4,9 @@ import Link from 'next/link';
 
 import { Home } from 'lucide-react';
 
+// Force dynamic rendering - no caching for real-time Google Sheets data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default function TaskPage() {
   return (

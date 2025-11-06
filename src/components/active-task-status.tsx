@@ -103,8 +103,16 @@ export function ActiveTaskStatus() {
           {selectedEmployee && !loading && (
             <div className="p-3 sm:p-4 rounded-lg border bg-card">
               {activeTask ? (() => {
-                // Calculate estimated end time and late status
-                const startTime = new Date(activeTask.startTime);
+                // Calculate estimated end time and late status (fix timezone)
+                const startTimeUTC = new Date(activeTask.startTime);
+                const startTime = new Date(
+                  startTimeUTC.getUTCFullYear(),
+                  startTimeUTC.getUTCMonth(),
+                  startTimeUTC.getUTCDate(),
+                  startTimeUTC.getUTCHours(),
+                  startTimeUTC.getUTCMinutes(),
+                  startTimeUTC.getUTCSeconds()
+                );
                 const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
                 const totalDurationSeconds = activeTask.itemQty > 0 
                   ? activeTask.itemQty * durationPerItem 
@@ -129,38 +137,42 @@ export function ActiveTaskStatus() {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs sm:text-sm space-y-1">
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Task:</span> 
-                        <span className="text-muted-foreground sm:text-foreground">{activeTask.taskName}</span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Portal:</span> 
-                        <span className="text-muted-foreground sm:text-foreground break-all">
-                          {activeTask.portalName || activeTask.otherTaskName}
-                        </span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Items:</span> 
-                        <span className="text-muted-foreground sm:text-foreground">{activeTask.itemQty}</span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Started:</span> 
-                        <span className="text-muted-foreground sm:text-foreground text-xs sm:text-sm">
-                          {format(startTime, "hh:mm a")}
-                        </span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Est. End:</span> 
-                        <span className={`text-xs sm:text-sm ${isLate ? 'text-red-600 font-medium' : 'text-muted-foreground sm:text-foreground'}`}>
-                          {format(estimatedEndTime, "hh:mm a")}
-                        </span>
-                      </div>
-                      <div className="flex flex-col sm:flex-row sm:justify-between">
-                        <span className="font-medium">Status:</span> 
-                        <span className={`text-xs sm:text-sm font-medium ${isLate ? 'text-red-600' : 'text-green-600'}`}>
-                          {isLate ? `${minutesLate}m Late` : 'On Time'}
-                        </span>
+                    <div className="grid grid-cols-1 gap-2 text-sm">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Task:</span>
+                            <span className="font-medium">{activeTask.taskName}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Portal:</span>
+                            <span className="font-medium text-right max-w-[120px] truncate" title={activeTask.portalName || activeTask.otherTaskName}>
+                              {activeTask.portalName || activeTask.otherTaskName}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Items:</span>
+                            <span className="font-medium">{activeTask.itemQty}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Started:</span>
+                            <span className="font-medium">{format(startTime, "hh:mm a")}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Est. End:</span>
+                            <span className={`font-medium ${isLate ? 'text-red-600' : ''}`}>
+                              {format(estimatedEndTime, "hh:mm a")}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="font-medium text-muted-foreground">Status:</span>
+                            <span className={`font-medium ${isLate ? 'text-red-600' : 'text-green-600'}`}>
+                              {isLate ? `${minutesLate}m Late` : 'On Time'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>

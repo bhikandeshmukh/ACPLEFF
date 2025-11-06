@@ -1,10 +1,6 @@
 
 "use server";
 
-// Force dynamic rendering - no caching for real-time Google Sheets data
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 
 import { google, sheets_v4 } from "googleapis";
 import { format, addSeconds, parse, differenceInSeconds, isWithinInterval } from "date-fns";
