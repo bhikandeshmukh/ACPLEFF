@@ -239,6 +239,13 @@ export function EnhancedTrackerForm() {
         }
         
         startForm.reset();
+        
+        // Auto refresh page after successful task start
+        setTimeout(() => {
+          console.log("🔄 Auto refreshing page after task start...");
+          window.location.reload();
+        }, 1500); // Small delay to show the success toast
+        
       } else {
         toast({
           title: "Error",
@@ -328,7 +335,7 @@ export function EnhancedTrackerForm() {
           }
           <br />
           <span className="text-xs text-muted-foreground mt-1 block">
-            Note: Active task status is saved locally and synced with Google Sheets. No refresh needed after starting a task.
+            Note: Page will automatically refresh after starting a task to show the End Task option.
           </span>
         </CardDescription>
       </CardHeader>
