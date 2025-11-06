@@ -364,6 +364,91 @@ export async function startTask(data: StartTaskRecord) {
   } as const;
 }
 
+// Update existing entry with end time
+async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalRemarks?: string) {
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+    const sheetName = activeTask.employeeName;
+
+    // Get existing sheet data
+    const getSheetResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: `${sheetName}!A1:ZZ1000` 
+    });
+    let rows = getSheetResponse.data.values || [];
+
+    // Find the column range for the task
+    const taskIndex = ALL_TASKS.indexOf(activeTask.taskName);
+    if (taskIndex === -1) {
+        throw new Error(`Task "${activeTask.taskName}" is not configured.`);
+    }
+    
+    const startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+    
+    // Find the row that matches this task entry
+    const submissionDateStr = format(new Date(activeTask.startTime), 'dd/MM/yyyy');
+    const startTimeStr = format(new Date(activeTask.startTime), 'hh:mm a');
+    
+    let targetRowIndex = -1;
+    
+    for (let i = 2; i < rows.length; i++) { // Start from row 3 (index 2)
+      const row = rows[i];
+      if (row[0] === submissionDateStr) {
+        // Check if this is the matching task entry by comparing portal/task name and start time
+        const portalCell = row[startColIndex];
+        const startTimeCell = row[startColIndex + 2];
+        
+        const expectedPortalName = activeTask.taskName === "OTHER WORK" 
+          ? activeTask.otherTaskName || '' 
+          : activeTask.portalName || '';
+        
+        if (portalCell === expectedPortalName && startTimeCell === startTimeStr) {
+          targetRowIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      throw new Error("Could not find the matching task entry to update");
+    }
+
+    // Update only the end time and final remarks columns
+    const endTimeColIndex = startColIndex + 4; // Actual End Time column
+    const finalRemarksColIndex = startColIndex + 7; // Final Remarks column
+    
+    const updates = [
+      {
+        range: `${sheetName}!${String.fromCharCode(65 + endTimeColIndex)}${targetRowIndex + 1}`,
+        values: [[format(new Date(endTime), 'hh:mm a')]]
+      }
+    ];
+    
+    if (finalRemarks) {
+      updates.push({
+        range: `${sheetName}!${String.fromCharCode(65 + finalRemarksColIndex)}${targetRowIndex + 1}`,
+        values: [[finalRemarks]]
+      });
+    }
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: updates
+      }
+    });
+
+    console.log(`End time updated in Google Sheets for ${activeTask.employeeName}`);
+    return { success: true };
+
+  } catch (sheetError: any) {
+    console.error("Failed to update end time in Google Sheets:", sheetError);
+    return { success: false, error: sheetError.message };
+  }
+}
+
 // End the current task
 export async function endTask(data: EndTaskRecord) {
   const validatedFields = EndTaskSchema.safeParse(data);
@@ -387,22 +472,14 @@ export async function endTask(data: EndTaskRecord) {
     };
   }
 
-  // Create complete record for submission
-  const completeRecord: EmployeeRecord = {
-    employeeName: activeTask.employeeName,
-    portalName: activeTask.portalName,
-    taskName: activeTask.taskName,
-    otherTaskName: activeTask.otherTaskName,
-    itemQty: activeTask.itemQty,
-    startTime: activeTask.startTime,
-    endTime: validatedFields.data.endTime,
-    remarks: validatedFields.data.remarks || activeTask.remarks,
-  };
+  // Update the existing entry with end time instead of creating a new record
+  const updateResult = await updateTaskEndTime(
+    activeTask, 
+    validatedFields.data.endTime, 
+    validatedFields.data.remarks
+  );
 
-  // Submit the complete record
-  const submitResult = await submitRecord(completeRecord);
-
-  if (submitResult.success) {
+  if (updateResult.success) {
     // Remove from active tasks
     activeTasks.delete(employeeName);
     saveActiveTasks(activeTasks);
@@ -414,7 +491,10 @@ export async function endTask(data: EndTaskRecord) {
       message: `Task completed successfully! Total time: ${calculateDuration(activeTask.startTime, validatedFields.data.endTime)}`,
     };
   } else {
-    return submitResult;
+    return {
+      success: false,
+      error: updateResult.error || "Failed to update task end time",
+    };
   }
 }
 
