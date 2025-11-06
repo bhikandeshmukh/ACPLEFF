@@ -12,14 +12,20 @@ const TASK_COLUMN_WIDTH = 8; // B to I is 8 columns
 // Check for active tasks from Google Sheets (real-time)
 async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTask | null> {
   try {
+    console.log(`🔍 DEBUGGING: Checking active task for employee: "${employeeName}"`);
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
     
     // Check if employee sheet exists
     const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+    const availableSheets = spreadsheetInfo.data.sheets?.map(s => s.properties?.title) || [];
+    console.log(`🔍 Available sheets: [${availableSheets.join(', ')}]`);
+    
     const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === employeeName);
+    console.log(`🔍 Sheet "${employeeName}" exists: ${sheetExists}`);
     
     if (!sheetExists) {
+      console.log(`🔍 Sheet "${employeeName}" not found, returning null`);
       return null;
     }
 
@@ -29,6 +35,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`Today's date for checking: ${todayStr}`);
     
     // Get sheet data (force fresh data, no cache)
+    console.log(`🔍 Fetching data from sheet: "${employeeName}"`);
     const getSheetResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${employeeName}!A1:ZZ1000`,
@@ -37,6 +44,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING'
     });
+    console.log(`🔍 Successfully fetched data from "${employeeName}" sheet`);
     
     const rows = getSheetResponse.data.values || [];
     
@@ -281,9 +289,10 @@ async function setupSheetHeaders(sheets: sheets_v4.Sheets, spreadsheetId: string
 
 // Check if employee has an active task (from Google Sheets) - Always fresh, no cache
 export async function getActiveTask(employeeName: string): Promise<ActiveTask | null> {
-  console.log(`Checking active task for ${employeeName} from Google Sheets (no cache)...`);
+  console.log(`🚀 getActiveTask called with employeeName: "${employeeName}"`);
+  console.log(`🚀 Employee name type: ${typeof employeeName}, length: ${employeeName.length}`);
   const activeTask = await checkActiveTaskFromSheets(employeeName);
-  console.log(`Active task for ${employeeName}:`, activeTask);
+  console.log(`🚀 Final result for ${employeeName}:`, activeTask);
   return activeTask;
 }
 
