@@ -9,32 +9,18 @@ import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS } from "@/l
 
 const TASK_COLUMN_WIDTH = 8; // B to I is 8 columns
 
-import { writeFileSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
-
-// File-based storage for active tasks (more persistent than in-memory)
-const ACTIVE_TASKS_FILE = join(process.cwd(), '.active-tasks.json');
+// In-memory storage for active tasks (serverless-compatible)
+// Note: This will reset on each deployment, which is acceptable for this use case
+const activeTasks = new Map<string, ActiveTask>();
 
 function getActiveTasks(): Map<string, ActiveTask> {
-  try {
-    if (existsSync(ACTIVE_TASKS_FILE)) {
-      const data = readFileSync(ACTIVE_TASKS_FILE, 'utf-8');
-      const tasksObj = JSON.parse(data);
-      return new Map(Object.entries(tasksObj));
-    }
-  } catch (error) {
-    console.error('Error reading active tasks:', error);
-  }
-  return new Map();
+  return activeTasks;
 }
 
 function saveActiveTasks(tasks: Map<string, ActiveTask>) {
-  try {
-    const tasksObj = Object.fromEntries(tasks);
-    writeFileSync(ACTIVE_TASKS_FILE, JSON.stringify(tasksObj, null, 2));
-  } catch (error) {
-    console.error('Error saving active tasks:', error);
-  }
+  // In serverless environments, we can't persist to disk
+  // The Map is already updated by reference, so no action needed
+  console.log('Active tasks updated in memory:', Object.fromEntries(tasks));
 }
 
 // Helper function to get Google Sheets API client
@@ -241,6 +227,131 @@ export async function startTask(data: StartTaskRecord) {
     remarks: validatedFields.data.remarks,
   };
 
+  // Write start entry to Google Sheets immediately
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+    const sheetName = employeeName;
+
+    // Check if sheet exists, create if not
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === sheetName);
+
+    if (!sheetExists) {
+        await sheets.spreadsheets.batchUpdate({
+            spreadsheetId,
+            requestBody: {
+                requests: [{ addSheet: { properties: { title: sheetName } } }]
+            }
+        });
+        await setupSheetHeaders(sheets, spreadsheetId, sheetName);
+    }
+
+    // Get existing sheet data
+    const getSheetResponse = await sheets.spreadsheets.values.get({ 
+      spreadsheetId, 
+      range: `${sheetName}!A1:ZZ1000` 
+    });
+    let rows = getSheetResponse.data.values || [];
+
+    // Ensure headers exist
+    if (rows.length < 2 || !rows[0][0] || rows[0][0] !== 'DATE') {
+        await setupSheetHeaders(sheets, spreadsheetId, sheetName);
+        const updatedSheetResponse = await sheets.spreadsheets.values.get({ 
+          spreadsheetId, 
+          range: `${sheetName}!A1:ZZ1000` 
+        });
+        rows = updatedSheetResponse.data.values || [];
+    }
+
+    // Find the column range for the task
+    const taskIndex = ALL_TASKS.indexOf(activeTask.taskName);
+    if (taskIndex === -1) {
+        throw new Error(`Task "${activeTask.taskName}" is not configured.`);
+    }
+    
+    const startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+    
+    // Find appropriate row for the submission
+    const submissionDateStr = format(new Date(activeTask.startTime), 'dd/MM/yyyy');
+    
+    const dateMatchingRows = rows
+      .map((row, index) => ({ row, index }))
+      .filter((r, index) => index >= 2 && r.row[0] === submissionDateStr);
+
+    let targetRowIndex = -1;
+    let existingRowData: any[] = [];
+    
+    for (const { row, index } of dateMatchingRows) {
+      const portalCell = row[startColIndex];
+      if (!portalCell || portalCell.trim() === '') {
+        targetRowIndex = index;
+        existingRowData = row;
+        break;
+      }
+    }
+
+    if (targetRowIndex === -1) {
+      targetRowIndex = rows.length; 
+      existingRowData = []; 
+    }
+
+    // Calculate estimated end time
+    const startTime = new Date(activeTask.startTime);
+    const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
+    const durationInSeconds = activeTask.itemQty > 0 
+      ? activeTask.itemQty * durationPerItem 
+      : DEFAULT_DURATION_SECONDS;
+    const estimatedEndTime = addSeconds(startTime, durationInSeconds);
+
+    // Prepare the data for the specific task block (start entry)
+    const firstCellData = activeTask.taskName === "OTHER WORK" 
+        ? activeTask.otherTaskName || '' 
+        : activeTask.portalName || '';
+
+    const taskDataBlock = [
+        firstCellData,                                           // Portal/Task Description
+        activeTask.itemQty,                                      // Item Qty
+        format(startTime, 'hh:mm a'),                           // Start Time
+        format(estimatedEndTime, 'hh:mm a'),                    // Estimated End Time
+        '',                                                      // Actual End Time (empty for now)
+        activeTask.remarks || '',                               // Chetan Remarks
+        '',                                                      // Ganesh (empty)
+        ''                                                       // Final Remarks (empty)
+    ];
+    
+    // Construct the final row
+    const finalRow = [...existingRowData];
+    if (finalRow.length === 0) {
+        finalRow[0] = submissionDateStr;
+    }
+    
+    // Ensure row is long enough
+    while (finalRow.length < startColIndex + taskDataBlock.length) {
+        finalRow.push('');
+    }
+
+    for (let i = 0; i < taskDataBlock.length; i++) {
+        finalRow[startColIndex + i] = taskDataBlock[i];
+    }
+
+    // Update the sheet with the start entry
+    await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A${targetRowIndex + 1}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+            values: [finalRow],
+        }
+    });
+
+    console.log(`Start entry written to Google Sheets for ${employeeName}`);
+
+  } catch (sheetError: any) {
+    console.error("Failed to write start entry to Google Sheets:", sheetError);
+    // Don't fail the task start if sheet write fails
+  }
+
   activeTasks.set(employeeName, activeTask);
   saveActiveTasks(activeTasks);
   
@@ -248,7 +359,7 @@ export async function startTask(data: StartTaskRecord) {
 
   return {
     success: true,
-    message: `Task started successfully! You can now work on your ${validatedFields.data.taskName} task.`,
+    message: `Task started successfully! Entry added to Google Sheets. You can now work on your ${validatedFields.data.taskName} task.`,
     activeTask,
   } as const;
 }

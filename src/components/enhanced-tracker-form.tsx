@@ -9,7 +9,6 @@ import {
   Clock,
   Loader2,
   MessageSquare,
-  Send,
   User,
   Globe,
   Hash,
@@ -193,6 +192,10 @@ export function EnhancedTrackerForm() {
             ? `You have an active ${activeTask.taskName} task. Complete it to start a new task.`
             : "Start a new task by filling out the form below. Fields marked with * are required."
           }
+          <br />
+          <span className="text-xs text-muted-foreground mt-1 block">
+            Note: Active task status is maintained during your session.
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
