@@ -174,7 +174,7 @@ export function EnhancedTrackerForm() {
   }
 
   // Set current time for start/end time fields
-  const setCurrentTime = (field: "startTime" | "endTime") => {
+  const setCurrentTimeField = (field: "startTime" | "endTime") => {
     const now = new Date();
     const timeString = format(now, "yyyy-MM-dd'T'HH:mm");
     if (field === "startTime") {
@@ -325,7 +325,7 @@ export function EnhancedTrackerForm() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setCurrentTime("endTime")}
+                          onClick={() => setCurrentTimeField("endTime")}
                           disabled={isEnding}
                           className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
                         >
@@ -531,7 +531,7 @@ export function EnhancedTrackerForm() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setCurrentTime("startTime")}
+                        onClick={() => setCurrentTimeField("startTime")}
                         disabled={isStarting}
                         className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
                       >
