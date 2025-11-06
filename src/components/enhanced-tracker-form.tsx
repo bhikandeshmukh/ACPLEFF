@@ -247,8 +247,17 @@ export function EnhancedTrackerForm() {
 
         {/* Active Task Display */}
         {activeTask && (() => {
-          // Calculate estimated end time
-          const startTime = new Date(activeTask.startTime);
+          // Calculate estimated end time (treat UTC as local time)
+          const startTimeUTC = new Date(activeTask.startTime);
+          // Create a new date with the same time but in local timezone
+          const startTime = new Date(
+            startTimeUTC.getUTCFullYear(),
+            startTimeUTC.getUTCMonth(),
+            startTimeUTC.getUTCDate(),
+            startTimeUTC.getUTCHours(),
+            startTimeUTC.getUTCMinutes(),
+            startTimeUTC.getUTCSeconds()
+          );
           const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
           const totalDurationSeconds = activeTask.itemQty > 0 
             ? activeTask.itemQty * durationPerItem 
