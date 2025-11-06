@@ -896,7 +896,6 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
           return null;
         }
     }
-    };
     
     const employeeData: EmployeeReport = {
       name: employeeName,
@@ -1009,5 +1008,3 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     throw new Error(`Failed to fetch report: ${outerError.message}`);
   }
 }
-
-    
