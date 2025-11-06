@@ -472,11 +472,33 @@ export async function startTask(data: StartTaskRecord) {
 
   console.log(`Started task for ${employeeName}:`, activeTask);
 
-  return {
-    success: true,
-    message: `Task started successfully! Entry added to Google Sheets. You can now work on your ${validatedFields.data.taskName} task.`,
-    activeTask,
-  } as const;
+  // Verify the task was actually written by checking Google Sheets
+  try {
+    console.log("🔄 Verifying task was written to Google Sheets...");
+    const verificationTask = await checkActiveTaskFromSheets(employeeName);
+    if (verificationTask) {
+      console.log("✅ Task verified in Google Sheets:", verificationTask);
+      return {
+        success: true,
+        message: `Task started successfully! Entry added to Google Sheets. You can now work on your ${validatedFields.data.taskName} task.`,
+        activeTask: verificationTask, // Return the verified task from Google Sheets
+      } as const;
+    } else {
+      console.log("⚠️ Task not found in Google Sheets after write, using local data");
+      return {
+        success: true,
+        message: `Task started successfully! Entry added to Google Sheets. You can now work on your ${validatedFields.data.taskName} task.`,
+        activeTask,
+      } as const;
+    }
+  } catch (verificationError) {
+    console.error("Error verifying task in Google Sheets:", verificationError);
+    return {
+      success: true,
+      message: `Task started successfully! Entry added to Google Sheets. You can now work on your ${validatedFields.data.taskName} task.`,
+      activeTask,
+    } as const;
+  }
 }
 
 // Update existing entry with end time

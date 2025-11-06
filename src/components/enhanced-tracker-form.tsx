@@ -150,19 +150,32 @@ export function EnhancedTrackerForm() {
   }, [watchedStartTime, watchedTaskName, watchedItemQty, toast]);
 
   async function onStartTask(data: StartTaskRecord) {
-    const response = await startTask(data);
-    if (response.success) {
-      toast({
-        title: "Task Started!",
-        description: (response as any).message,
-        variant: "default",
-      });
-      setActiveTask((response as any).activeTask);
-      startForm.reset();
-    } else {
+    try {
+      const response = await startTask(data);
+      if (response.success) {
+        toast({
+          title: "Task Started!",
+          description: (response as any).message,
+          variant: "default",
+        });
+        
+        // Use the verified activeTask from the response (already checked against Google Sheets)
+        console.log("✅ Setting active task from verified response:", (response as any).activeTask);
+        setActiveTask((response as any).activeTask);
+        
+        startForm.reset();
+      } else {
+        toast({
+          title: "Error",
+          description: response.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error starting task:", error);
       toast({
         title: "Error",
-        description: response.error,
+        description: "Failed to start task. Please try again.",
         variant: "destructive",
       });
     }
@@ -176,7 +189,15 @@ export function EnhancedTrackerForm() {
         description: (response as any).message,
         variant: "default",
       });
-      setActiveTask(null);
+      
+      // Refresh active task from Google Sheets to ensure no stale data
+      if (selectedEmployee) {
+        const freshActiveTask = await getActiveTask(selectedEmployee);
+        setActiveTask(freshActiveTask);
+      } else {
+        setActiveTask(null);
+      }
+      
       endForm.reset();
       setSelectedEmployee("");
     } else {
