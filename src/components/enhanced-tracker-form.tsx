@@ -52,6 +52,7 @@ export function EnhancedTrackerForm() {
   const [activeTask, setActiveTask] = useState<ActiveTask | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [checkingActiveTask, setCheckingActiveTask] = useState(false);
   
   const startForm = useForm<StartTaskRecord>({
     resolver: zodResolver(StartTaskSchema),
@@ -82,21 +83,36 @@ export function EnhancedTrackerForm() {
   const watchedStartTime = watchStart("startTime");
   const watchedItemQty = watchStart("itemQty");
 
-  // Check for active task when employee is selected
+  // Check for active task when employee is selected (with loading)
   useEffect(() => {
     async function checkActiveTask() {
       if (selectedEmployee) {
-        const active = await getActiveTask(selectedEmployee);
-        setActiveTask(active);
-        if (active) {
-          setEndValue("employeeName", selectedEmployee);
-        } else {
-          setStartValue("employeeName", selectedEmployee);
+        setCheckingActiveTask(true);
+        try {
+          const active = await getActiveTask(selectedEmployee);
+          setActiveTask(active);
+          if (active) {
+            setEndValue("employeeName", selectedEmployee);
+          } else {
+            setStartValue("employeeName", selectedEmployee);
+          }
+        } catch (error) {
+          console.error("Error checking active task:", error);
+          toast({
+            title: "Error",
+            description: "Failed to check active task status. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setCheckingActiveTask(false);
         }
+      } else {
+        setActiveTask(null);
+        setCheckingActiveTask(false);
       }
     }
     checkActiveTask();
-  }, [selectedEmployee, setStartValue, setEndValue]);
+  }, [selectedEmployee, setStartValue, setEndValue, toast]);
 
   // Update current time every minute for real-time late status
   useEffect(() => {
@@ -202,11 +218,15 @@ export function EnhancedTrackerForm() {
         {/* Employee Selection */}
         <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium mb-2">Select Employee</label>
-          <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+          <Select value={selectedEmployee} onValueChange={setSelectedEmployee} disabled={checkingActiveTask}>
             <SelectTrigger className="h-10 sm:h-11">
               <div className="flex items-center">
-                <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                <SelectValue placeholder="Select your name" />
+                {checkingActiveTask ? (
+                  <Loader2 className="mr-2 h-4 w-4 text-muted-foreground animate-spin" />
+                ) : (
+                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                )}
+                <SelectValue placeholder={checkingActiveTask ? "Checking active tasks..." : "Select your name"} />
               </div>
             </SelectTrigger>
             <SelectContent>
@@ -217,6 +237,12 @@ export function EnhancedTrackerForm() {
               ))}
             </SelectContent>
           </Select>
+          {checkingActiveTask && (
+            <p className="text-xs text-muted-foreground mt-2 flex items-center">
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              Checking Google Sheets for active tasks...
+            </p>
+          )}
         </div>
 
         {/* Active Task Display */}
@@ -379,8 +405,23 @@ export function EnhancedTrackerForm() {
           </Form>
         )}
 
+        {/* Loading State */}
+        {checkingActiveTask && selectedEmployee && (
+          <Card className="mb-4 sm:mb-6 bg-blue-50 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="mr-3 h-6 w-6 animate-spin text-blue-600" />
+                <div className="text-center">
+                  <p className="text-sm font-medium text-blue-900">Checking Active Tasks</p>
+                  <p className="text-xs text-blue-700 mt-1">Verifying Google Sheets data...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Start Task Form */}
-        {!activeTask && selectedEmployee && (
+        {!activeTask && selectedEmployee && !checkingActiveTask && (
           <Form {...startForm}>
             <form onSubmit={startForm.handleSubmit(onStartTask)} className="space-y-4 sm:space-y-6">
               <FormField

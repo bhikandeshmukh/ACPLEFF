@@ -61,21 +61,31 @@ export default function ReportPage() {
     try {
       const allEmployeesData: EmployeeReport[] = [];
       
-      // Fetch data for all employees
+      // Fetch data for all employees (include those without data)
       for (const employeeName of employeesToShow) {
         const employeeData = await getEmployeeReport(reportParams.date as { from: Date; to: Date }, employeeName);
         if (employeeData) {
           allEmployeesData.push(employeeData);
+        } else {
+          // Create empty report for employees with no data
+          const emptyReport: EmployeeReport = {
+            name: employeeName,
+            totalWorkTime: 0,
+            totalItems: 0,
+            averageRunRate: 0,
+            tasks: {},
+            detailedRecords: []
+          };
+          allEmployeesData.push(emptyReport);
         }
       }
       
-      if (allEmployeesData.length > 0) {
-        const pdf = await generateAllEmployeesPDF(allEmployeesData, reportParams.date as { from: Date; to: Date });
-        const filename = selectedEmployee === 'All' 
-          ? `All_Employees_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`
-          : `${selectedEmployee}_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`;
-        downloadPDF(pdf, filename);
-      }
+      // Always generate PDF since we now include all employees (even with no data)
+      const pdf = await generateAllEmployeesPDF(allEmployeesData, reportParams.date as { from: Date; to: Date });
+      const filename = selectedEmployee === 'All' 
+        ? `All_Employees_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`
+        : `${selectedEmployee}_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`;
+      downloadPDF(pdf, filename);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {

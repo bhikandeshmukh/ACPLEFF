@@ -9,18 +9,70 @@ import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS } from "@/l
 
 const TASK_COLUMN_WIDTH = 8; // B to I is 8 columns
 
-// In-memory storage for active tasks (serverless-compatible)
-// Note: This will reset on each deployment, which is acceptable for this use case
-const activeTasks = new Map<string, ActiveTask>();
+// Check for active tasks from Google Sheets (real-time)
+async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTask | null> {
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+    
+    // Check if employee sheet exists
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === employeeName);
+    
+    if (!sheetExists) {
+      return null;
+    }
 
-function getActiveTasks(): Map<string, ActiveTask> {
-  return activeTasks;
-}
-
-function saveActiveTasks(tasks: Map<string, ActiveTask>) {
-  // In serverless environments, we can't persist to disk
-  // The Map is already updated by reference, so no action needed
-  console.log('Active tasks updated in memory:', Object.fromEntries(tasks));
+    // Get today's date in DD/MM/YYYY format
+    const today = new Date();
+    const todayStr = format(today, 'dd/MM/yyyy');
+    
+    // Get sheet data
+    const getSheetResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${employeeName}!A1:ZZ1000`
+    });
+    
+    const rows = getSheetResponse.data.values || [];
+    
+    // Look for today's entries with missing end time (active tasks)
+    for (let i = 2; i < rows.length; i++) {
+      const row = rows[i];
+      if (row[0] === todayStr) {
+        // Check each task column for active tasks
+        for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
+          const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+          const portalName = row[startCol];
+          const itemQty = row[startCol + 1];
+          const startTime = row[startCol + 2];
+          const endTime = row[startCol + 4]; // Actual End Time column
+          
+          // If there's a start time but no end time, it's an active task
+          if (portalName && startTime && !endTime) {
+            const taskName = ALL_TASKS[taskIndex];
+            
+            // Convert start time to full datetime
+            const startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy hh:mm a', new Date());
+            
+            return {
+              employeeName,
+              portalName: taskName === "OTHER WORK" ? "" : portalName,
+              taskName,
+              otherTaskName: taskName === "OTHER WORK" ? portalName : undefined,
+              itemQty: parseInt(itemQty) || 0,
+              startTime: startDateTime.toISOString(),
+              remarks: row[startCol + 5] || ""
+            };
+          }
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`Error checking active task for ${employeeName}:`, error);
+    return null;
+  }
 }
 
 // Helper function to get Google Sheets API client
@@ -177,19 +229,27 @@ async function setupSheetHeaders(sheets: sheets_v4.Sheets, spreadsheetId: string
 }
 
 
-// Check if employee has an active task
+// Check if employee has an active task (from Google Sheets)
 export async function getActiveTask(employeeName: string): Promise<ActiveTask | null> {
-  const activeTasks = getActiveTasks();
-  const task = activeTasks.get(employeeName) || null;
-  console.log(`Getting active task for ${employeeName}:`, task);
-  console.log(`All active tasks:`, Object.fromEntries(activeTasks));
-  return task;
+  console.log(`Checking active task for ${employeeName} from Google Sheets...`);
+  const activeTask = await checkActiveTaskFromSheets(employeeName);
+  console.log(`Active task for ${employeeName}:`, activeTask);
+  return activeTask;
 }
 
-// Get all active tasks (for debugging)
+// Get all active tasks from Google Sheets (for debugging)
 export async function getAllActiveTasks(): Promise<{ [key: string]: ActiveTask }> {
-  const activeTasks = getActiveTasks();
-  return Object.fromEntries(activeTasks);
+  const { employees } = await import('@/lib/config');
+  const allActiveTasks: { [key: string]: ActiveTask } = {};
+  
+  for (const employee of employees) {
+    const activeTask = await checkActiveTaskFromSheets(employee.name);
+    if (activeTask) {
+      allActiveTasks[employee.name] = activeTask;
+    }
+  }
+  
+  return allActiveTasks;
 }
 
 // Start a new task
@@ -206,10 +266,9 @@ export async function startTask(data: StartTaskRecord) {
 
   const employeeName = validatedFields.data.employeeName;
 
-  const activeTasks = getActiveTasks();
-  
-  // Check if employee already has an active task
-  if (activeTasks.has(employeeName)) {
+  // Check if employee already has an active task (from Google Sheets)
+  const existingActiveTask = await checkActiveTaskFromSheets(employeeName);
+  if (existingActiveTask) {
     return {
       success: false,
       error: "You already have an active task. Please end your current task before starting a new one.",
@@ -352,9 +411,6 @@ export async function startTask(data: StartTaskRecord) {
     // Don't fail the task start if sheet write fails
   }
 
-  activeTasks.set(employeeName, activeTask);
-  saveActiveTasks(activeTasks);
-  
   console.log(`Started task for ${employeeName}:`, activeTask);
 
   return {
@@ -462,8 +518,9 @@ export async function endTask(data: EndTaskRecord) {
   }
 
   const employeeName = validatedFields.data.employeeName;
-  const activeTasks = getActiveTasks();
-  const activeTask = activeTasks.get(employeeName);
+  
+  // Get active task from Google Sheets
+  const activeTask = await checkActiveTaskFromSheets(employeeName);
 
   if (!activeTask) {
     return {
@@ -480,10 +537,6 @@ export async function endTask(data: EndTaskRecord) {
   );
 
   if (updateResult.success) {
-    // Remove from active tasks
-    activeTasks.delete(employeeName);
-    saveActiveTasks(activeTasks);
-    
     console.log(`Ended task for ${employeeName}`);
     
     return {

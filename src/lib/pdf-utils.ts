@@ -28,9 +28,14 @@ export async function generateEmployeePDF(employeeData: EmployeeReport, dateRang
   const totalHours = Math.floor(employeeData.totalWorkTime / 3600);
   const totalMinutes = Math.floor((employeeData.totalWorkTime % 3600) / 60);
   
-  pdf.text(`Total Work Time: ${totalHours}h ${totalMinutes}m`, 20, 70);
-  pdf.text(`Total Items: ${employeeData.totalItems}`, 20, 80);
-  pdf.text(`Average Run Rate: ${employeeData.averageRunRate.toFixed(2)}s/item`, 20, 90);
+  // Handle no data cases
+  const workTimeDisplay = employeeData.totalWorkTime > 0 ? `${totalHours}h ${totalMinutes}m` : 'No Data Available';
+  const itemsDisplay = employeeData.totalItems > 0 ? employeeData.totalItems.toString() : 'No Data Available';
+  const rateDisplay = employeeData.averageRunRate > 0 ? `${employeeData.averageRunRate.toFixed(2)}s/item` : 'No Data Available';
+  
+  pdf.text(`Total Work Time: ${workTimeDisplay}`, 20, 70);
+  pdf.text(`Total Items: ${itemsDisplay}`, 20, 80);
+  pdf.text(`Average Run Rate: ${rateDisplay}`, 20, 90);
   
   // Task breakdown
   pdf.setFont('helvetica', 'bold');
@@ -38,10 +43,16 @@ export async function generateEmployeePDF(employeeData: EmployeeReport, dateRang
   
   let yPos = 115;
   pdf.setFont('helvetica', 'normal');
-  Object.entries(employeeData.tasks).forEach(([taskName, taskDetails]) => {
-    pdf.text(`${taskName}: ${taskDetails.quantity} items, ${taskDetails.runRate.toFixed(2)}s/item`, 20, yPos);
+  
+  if (Object.keys(employeeData.tasks).length > 0) {
+    Object.entries(employeeData.tasks).forEach(([taskName, taskDetails]) => {
+      pdf.text(`${taskName}: ${taskDetails.quantity} items, ${taskDetails.runRate.toFixed(2)}s/item`, 20, yPos);
+      yPos += 10;
+    });
+  } else {
+    pdf.text('No task data available for this period', 20, yPos);
     yPos += 10;
-  });
+  }
 
   // Portal-wise breakdown for individual employee
   if (employeeData.detailedRecords && employeeData.detailedRecords.length > 0) {
@@ -179,11 +190,16 @@ export async function generateAllEmployeesPDF(employeesData: EmployeeReport[], d
     const totalHours = Math.floor(employee.totalWorkTime / 3600);
     const totalMinutes = Math.floor((employee.totalWorkTime % 3600) / 60);
     
+    // Handle employees with no data
+    const workTimeDisplay = employee.totalWorkTime > 0 ? `${totalHours}h ${totalMinutes}m` : 'No Data';
+    const itemsDisplay = employee.totalItems > 0 ? employee.totalItems.toString() : 'No Data';
+    const rateDisplay = employee.averageRunRate > 0 ? `${employee.averageRunRate.toFixed(2)}s/item` : 'No Data';
+    
     const rowData = [
       employee.name,
-      `${totalHours}h ${totalMinutes}m`,
-      employee.totalItems.toString(),
-      `${employee.averageRunRate.toFixed(2)}s/item`
+      workTimeDisplay,
+      itemsDisplay,
+      rateDisplay
     ];
     
     rowData.forEach((data, i) => {
