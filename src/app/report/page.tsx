@@ -31,9 +31,7 @@ import { getEmployeeReport, type EmployeeReport } from '@/app/server-actions';
 import { generateAllEmployeesPDF, downloadPDF } from '@/lib/pdf-utils';
 import { Download } from 'lucide-react';
 
-// Force dynamic rendering - no caching for real-time Google Sheets data
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Client component - no cache exports needed here
 
 export default function ReportPage() {
   const [date, setDate] = useState<DateRange | undefined>();
