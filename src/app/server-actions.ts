@@ -728,11 +728,24 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     console.log('Spreadsheet ID:', spreadsheetId);
     
     // Ensure dates are Date objects and adjust for full day coverage
-    const startDate = new Date(dateRange.from);
-    const endDate = new Date(dateRange.to);
+    let startDate = new Date(dateRange.from);
+    let endDate = new Date(dateRange.to);
     
     console.log('Original dates:', { from: dateRange.from, to: dateRange.to });
     console.log('Parsed dates before adjustment:', { start: startDate, end: endDate });
+    
+    // Handle timezone offset - if the date seems to be from previous day due to timezone, adjust it
+    const now = new Date();
+    const timezoneOffset = now.getTimezoneOffset(); // Minutes difference from UTC
+    
+    // If we're in a positive timezone (like IST +5:30), and the date is showing previous day
+    if (timezoneOffset < 0) {
+      // Add the timezone offset to get the correct local date
+      startDate = new Date(startDate.getTime() - (timezoneOffset * 60 * 1000));
+      endDate = new Date(endDate.getTime() - (timezoneOffset * 60 * 1000));
+    }
+    
+    console.log('Timezone adjusted dates:', { start: startDate, end: endDate });
     
     // Set start to beginning of day and end to end of day to avoid timezone issues
     startDate.setHours(0, 0, 0, 0);
