@@ -551,20 +551,32 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
       throw new Error("Could not find the matching task entry to update");
     }
 
+    // Helper function to convert column index to Excel column name (A, B, C, ..., Z, AA, AB, ...)
+    function getColumnName(colIndex: number): string {
+      let result = '';
+      while (colIndex >= 0) {
+        result = String.fromCharCode(65 + (colIndex % 26)) + result;
+        colIndex = Math.floor(colIndex / 26) - 1;
+      }
+      return result;
+    }
+
     // Update only the end time and final remarks columns
     const endTimeColIndex = startColIndex + 4; // Actual End Time column
     const finalRemarksColIndex = startColIndex + 7; // Final Remarks column
     
+    console.log(`Updating columns: endTime=${getColumnName(endTimeColIndex)}, finalRemarks=${getColumnName(finalRemarksColIndex)}`);
+    
     const updates = [
       {
-        range: `${sheetName}!${String.fromCharCode(65 + endTimeColIndex)}${targetRowIndex + 1}`,
+        range: `${sheetName}!${getColumnName(endTimeColIndex)}${targetRowIndex + 1}`,
         values: [[format(new Date(endTime), 'hh:mm a')]]
       }
     ];
     
     if (finalRemarks) {
       updates.push({
-        range: `${sheetName}!${String.fromCharCode(65 + finalRemarksColIndex)}${targetRowIndex + 1}`,
+        range: `${sheetName}!${getColumnName(finalRemarksColIndex)}${targetRowIndex + 1}`,
         values: [[finalRemarks]]
       });
     }
