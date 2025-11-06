@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -25,11 +26,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { getEmployeeReport, type EmployeeReport } from '@/app/server-actions';
+import { getEmployeeReport, type EmployeeReport, type TaskRecord } from '@/app/server-actions';
+import { generateEmployeePDF, downloadPDF } from '@/lib/pdf-utils';
+import { Download } from 'lucide-react';
 
 type EmployeeReportCardProps = {
   employeeName: string;
-  dateRange: DateRange;
+  dateRange: { from: Date; to: Date };
 };
 
 function formatDuration(seconds: number): string {
@@ -50,20 +53,23 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
   const [reportData, setReportData] = useState<EmployeeReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
 
   useEffect(() => {
     async function fetchReport() {
       const { from, to } = dateRange;
       if (!from) return;
 
-      const effectiveTo = to ?? from;
+      const effectiveTo = to || from;
       
       setLoading(true);
       setError(null);
       setReportData(null);
 
       try {
-        const data = await getEmployeeReport({ from: from, to: effectiveTo }, employeeName);
+        console.log(`Fetching report for ${employeeName} from ${from} to ${effectiveTo}`);
+        const data = await getEmployeeReport({ from, to: effectiveTo }, employeeName);
+        console.log(`Report data for ${employeeName}:`, data);
         setReportData(data);
       } catch (err: any) {
         console.error(`Failed to fetch report for ${employeeName}:`, err);
@@ -75,6 +81,21 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
 
     fetchReport();
   }, [employeeName, dateRange]);
+
+  const handleDownloadPDF = async () => {
+    if (!reportData) return;
+    
+    setDownloadingPDF(true);
+    try {
+      const pdf = await generateEmployeePDF(reportData, dateRange);
+      const filename = `${employeeName}_Report_${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}.pdf`;
+      downloadPDF(pdf, filename);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -111,7 +132,10 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
             </div>
           </AccordionTrigger>
           <AccordionContent className="p-4 text-center text-muted-foreground">
-            No work records found for the selected period.
+            <div className="space-y-2">
+              <p>No work records found for the selected period.</p>
+              <p className="text-sm">Try submitting some task records first or selecting a different date range.</p>
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
@@ -121,13 +145,28 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
   return (
     <Accordion type="single" collapsible defaultValue={employeeName} className="w-full">
       <AccordionItem value={employeeName} className="border rounded-lg">
-        <AccordionTrigger className="p-4 bg-card rounded-lg text-lg font-medium hover:no-underline">
-          <div className="flex justify-between w-full pr-4">
-            <span>{reportData.name}</span>
-            <span className="text-sm text-muted-foreground font-normal">
+        <div className="flex items-center justify-between p-4 bg-card rounded-t-lg">
+          <div className="flex items-center gap-3">
+            <span className="text-lg font-medium">{reportData.name}</span>
+            <span className="text-sm text-muted-foreground">
               Work Time: {formatDuration(reportData.totalWorkTime)}
             </span>
           </div>
+          <button
+            onClick={handleDownloadPDF}
+            disabled={downloadingPDF}
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 disabled:pointer-events-none disabled:opacity-50"
+          >
+            {downloadingPDF ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Download className="h-3 w-3 mr-1" />
+            )}
+            PDF
+          </button>
+        </div>
+        <AccordionTrigger className="px-4 pb-2 text-sm font-medium hover:no-underline">
+          <span>View Details</span>
         </AccordionTrigger>
         <AccordionContent className="p-4 pt-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 mb-4">
@@ -180,6 +219,97 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
               </CardContent>
             </Card>
           </div>
+
+          {/* Portal-wise Summary */}
+          {reportData.detailedRecords && reportData.detailedRecords.length > 0 && (() => {
+            const portalSummary: { [portalName: string]: { items: number; time: number } } = {};
+            
+            reportData.detailedRecords.forEach((record) => {
+              const portalName = record.portal || 'Unknown';
+              if (!portalSummary[portalName]) {
+                portalSummary[portalName] = { items: 0, time: 0 };
+              }
+              portalSummary[portalName].items += record.quantity;
+              portalSummary[portalName].time += record.duration;
+            });
+
+            return (
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base">Portal-wise Summary</CardTitle>
+                  <CardDescription>Performance per portal</CardDescription>
+                </CardHeader>
+                <CardContent className="px-0 pb-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="px-4">Portal</TableHead>
+                        <TableHead className="text-right px-4">Items</TableHead>
+                        <TableHead className="text-right px-4">Avg Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(portalSummary).map(([portalName, data]) => (
+                        <TableRow key={portalName}>
+                          <TableCell className="font-medium px-4">{portalName}</TableCell>
+                          <TableCell className="text-right px-4">{data.items}</TableCell>
+                          <TableCell className="text-right px-4">
+                            {data.items > 0 ? (data.time / data.items).toFixed(2) : '0'}s
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            );
+          })()}
+          
+          {/* Detailed Records Table */}
+          {reportData.detailedRecords && reportData.detailedRecords.length > 0 && (
+            <Card className="mt-4">
+              <CardHeader>
+                <CardTitle className="text-base">Detailed Records</CardTitle>
+                <CardDescription>Complete breakdown of all tasks</CardDescription>
+              </CardHeader>
+              <CardContent className="px-0 pb-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="px-4">Date</TableHead>
+                        <TableHead className="px-4">Task</TableHead>
+                        <TableHead className="px-4">Portal</TableHead>
+                        <TableHead className="text-right px-4">No. Of Piece</TableHead>
+                        <TableHead className="px-4">Start Time</TableHead>
+                        <TableHead className="px-4">Estimated End Time</TableHead>
+                        <TableHead className="px-4">Actual End Time</TableHead>
+                        <TableHead className="px-4">Chetan Remarks</TableHead>
+                        <TableHead className="px-4">Ganesh</TableHead>
+                        <TableHead className="px-4">Final Remarks</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.detailedRecords.map((record, index) => (
+                        <TableRow key={index}>
+                          <TableCell className="px-4">{record.date}</TableCell>
+                          <TableCell className="font-medium px-4">{record.taskName}</TableCell>
+                          <TableCell className="px-4">{record.portal}</TableCell>
+                          <TableCell className="text-right px-4">{record.quantity}</TableCell>
+                          <TableCell className="px-4">{record.startTime}</TableCell>
+                          <TableCell className="px-4">{record.estimatedEndTime}</TableCell>
+                          <TableCell className="px-4">{record.actualEndTime}</TableCell>
+                          <TableCell className="px-4">{record.chetanRemarks || '-'}</TableCell>
+                          <TableCell className="px-4">{record.ganesh || '-'}</TableCell>
+                          <TableCell className="px-4">{record.finalRemarks || '-'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </AccordionContent>
       </AccordionItem>
     </Accordion>

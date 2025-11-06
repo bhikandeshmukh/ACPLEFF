@@ -1,9 +1,9 @@
-import { TrackerForm } from '@/components/tracker-form';
+import { EnhancedTrackerForm } from '@/components/enhanced-tracker-form';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+
 import { Home } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+
 
 export default function TaskPage() {
   return (
@@ -12,11 +12,13 @@ export default function TaskPage() {
         <header className="mb-8 flex items-center justify-between gap-4">
           <Logo />
            <Link href="/" passHref>
-            <Button variant="outline"><Home className="mr-2 h-4 w-4" />Back to Home</Button>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+              <Home className="mr-2 h-4 w-4" />Back to Home
+            </button>
           </Link>
         </header>
         <main>
-            <TrackerForm />
+            <EnhancedTrackerForm />
         </main>
         <footer className="mt-8 text-center text-sm text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} Efficiency Recorder.</p>

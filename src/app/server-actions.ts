@@ -1,13 +1,41 @@
 
 "use server";
 
-import { headers } from "next/headers";
+
 import { google, sheets_v4 } from "googleapis";
-import { format, addSeconds, parse, differenceInSeconds, setHours, setMinutes, setSeconds, eachDayOfInterval, isWithinInterval } from "date-fns";
-import { EmployeeRecordSchema, type EmployeeRecord } from "@/lib/definitions";
-import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS, employees } from "@/lib/config";
+import { format, addSeconds, parse, differenceInSeconds, isWithinInterval } from "date-fns";
+import { EmployeeRecordSchema, StartTaskSchema, EndTaskSchema, type EmployeeRecord, type StartTaskRecord, type EndTaskRecord, type ActiveTask } from "@/lib/definitions";
+import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS } from "@/lib/config";
 
 const TASK_COLUMN_WIDTH = 8; // B to I is 8 columns
+
+import { writeFileSync, readFileSync, existsSync } from 'fs';
+import { join } from 'path';
+
+// File-based storage for active tasks (more persistent than in-memory)
+const ACTIVE_TASKS_FILE = join(process.cwd(), '.active-tasks.json');
+
+function getActiveTasks(): Map<string, ActiveTask> {
+  try {
+    if (existsSync(ACTIVE_TASKS_FILE)) {
+      const data = readFileSync(ACTIVE_TASKS_FILE, 'utf-8');
+      const tasksObj = JSON.parse(data);
+      return new Map(Object.entries(tasksObj));
+    }
+  } catch (error) {
+    console.error('Error reading active tasks:', error);
+  }
+  return new Map();
+}
+
+function saveActiveTasks(tasks: Map<string, ActiveTask>) {
+  try {
+    const tasksObj = Object.fromEntries(tasks);
+    writeFileSync(ACTIVE_TASKS_FILE, JSON.stringify(tasksObj, null, 2));
+  } catch (error) {
+    console.error('Error saving active tasks:', error);
+  }
+}
 
 // Helper function to get Google Sheets API client
 async function getSheetsClient() {
@@ -162,6 +190,138 @@ async function setupSheetHeaders(sheets: sheets_v4.Sheets, spreadsheetId: string
     }
 }
 
+
+// Check if employee has an active task
+export async function getActiveTask(employeeName: string): Promise<ActiveTask | null> {
+  const activeTasks = getActiveTasks();
+  const task = activeTasks.get(employeeName) || null;
+  console.log(`Getting active task for ${employeeName}:`, task);
+  console.log(`All active tasks:`, Object.fromEntries(activeTasks));
+  return task;
+}
+
+// Get all active tasks (for debugging)
+export async function getAllActiveTasks(): Promise<{ [key: string]: ActiveTask }> {
+  const activeTasks = getActiveTasks();
+  return Object.fromEntries(activeTasks);
+}
+
+// Start a new task
+export async function startTask(data: StartTaskRecord) {
+  const validatedFields = StartTaskSchema.safeParse(data);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      error: "Invalid data provided.",
+      details: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const employeeName = validatedFields.data.employeeName;
+
+  const activeTasks = getActiveTasks();
+  
+  // Check if employee already has an active task
+  if (activeTasks.has(employeeName)) {
+    return {
+      success: false,
+      error: "You already have an active task. Please end your current task before starting a new one.",
+    };
+  }
+
+  // Store the active task
+  const activeTask: ActiveTask = {
+    employeeName: validatedFields.data.employeeName,
+    portalName: validatedFields.data.portalName,
+    taskName: validatedFields.data.taskName,
+    otherTaskName: validatedFields.data.otherTaskName,
+    itemQty: validatedFields.data.itemQty || 0,
+    startTime: validatedFields.data.startTime,
+    remarks: validatedFields.data.remarks,
+  };
+
+  activeTasks.set(employeeName, activeTask);
+  saveActiveTasks(activeTasks);
+  
+  console.log(`Started task for ${employeeName}:`, activeTask);
+
+  return {
+    success: true,
+    message: `Task started successfully! You can now work on your ${validatedFields.data.taskName} task.`,
+    activeTask,
+  } as const;
+}
+
+// End the current task
+export async function endTask(data: EndTaskRecord) {
+  const validatedFields = EndTaskSchema.safeParse(data);
+
+  if (!validatedFields.success) {
+    return {
+      success: false,
+      error: "Invalid data provided.",
+      details: validatedFields.error.flatten().fieldErrors,
+    };
+  }
+
+  const employeeName = validatedFields.data.employeeName;
+  const activeTasks = getActiveTasks();
+  const activeTask = activeTasks.get(employeeName);
+
+  if (!activeTask) {
+    return {
+      success: false,
+      error: "No active task found. Please start a task first.",
+    };
+  }
+
+  // Create complete record for submission
+  const completeRecord: EmployeeRecord = {
+    employeeName: activeTask.employeeName,
+    portalName: activeTask.portalName,
+    taskName: activeTask.taskName,
+    otherTaskName: activeTask.otherTaskName,
+    itemQty: activeTask.itemQty,
+    startTime: activeTask.startTime,
+    endTime: validatedFields.data.endTime,
+    remarks: validatedFields.data.remarks || activeTask.remarks,
+  };
+
+  // Submit the complete record
+  const submitResult = await submitRecord(completeRecord);
+
+  if (submitResult.success) {
+    // Remove from active tasks
+    activeTasks.delete(employeeName);
+    saveActiveTasks(activeTasks);
+    
+    console.log(`Ended task for ${employeeName}`);
+    
+    return {
+      success: true,
+      message: `Task completed successfully! Total time: ${calculateDuration(activeTask.startTime, validatedFields.data.endTime)}`,
+    };
+  } else {
+    return submitResult;
+  }
+}
+
+// Helper function to calculate duration
+function calculateDuration(startTime: string, endTime: string): string {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const diffMs = end.getTime() - start.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(diffMins / 60);
+  const minutes = diffMins % 60;
+  
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  } else {
+    return `${minutes}m`;
+  }
+}
 
 export async function submitRecord(data: EmployeeRecord) {
   const validatedFields = EmployeeRecordSchema.safeParse(data);
@@ -329,6 +489,21 @@ export async function submitRecord(data: EmployeeRecord) {
   }
 }
 
+export type TaskRecord = {
+  date: string;
+  taskName: string;
+  portal: string;
+  quantity: number;
+  startTime: string;
+  estimatedEndTime: string;
+  actualEndTime: string;
+  chetanRemarks: string;
+  ganesh: string;
+  finalRemarks: string;
+  duration: number;
+  runRate: number;
+};
+
 export type EmployeeReport = {
     name: string;
     totalWorkTime: number;
@@ -341,6 +516,7 @@ export type EmployeeReport = {
         runRate: number;
       };
     };
+    detailedRecords: TaskRecord[];
 };
 
 type DateRange = {
@@ -349,32 +525,103 @@ type DateRange = {
 }
 
 export async function getEmployeeReport(dateRange: DateRange, employeeName: string): Promise<EmployeeReport | null> {
-  const sheets = await getSheetsClient();
-  const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+  console.log('=== Starting getEmployeeReport ===');
+  console.log('Employee:', employeeName);
+  console.log('Date range:', dateRange);
   
-  // Ensure dates are Date objects
-  const interval = { start: new Date(dateRange.from), end: new Date(dateRange.to) };
+
+  
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
+    console.log('Spreadsheet ID:', spreadsheetId);
+    
+    // Ensure dates are Date objects and adjust for full day coverage
+    const startDate = new Date(dateRange.from);
+    const endDate = new Date(dateRange.to);
+    
+    // Set start to beginning of day and end to end of day to avoid timezone issues
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+    
+    const interval = { start: startDate, end: endDate };
+    console.log(`Adjusted date range for ${employeeName}: ${interval.start} to ${interval.end}`);
 
   try {
-    const getSheetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `${employeeName}!A:`, 
-    });
+    console.log(`Fetching data for sheet: ${employeeName}`);
+    
+    // First check if the sheet exists
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
+    const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === employeeName);
+    console.log(`Sheet ${employeeName} exists:`, sheetExists);
+    
+    if (!sheetExists) {
+      console.log(`Sheet ${employeeName} not found`);
+      return null;
+    }
+    
+    let getSheetResponse;
+    try {
+      getSheetResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${employeeName}!A1:ZZ1000`, 
+      });
+      console.log('Successfully fetched sheet data');
+    } catch (apiError: any) {
+      console.error('Google Sheets API error:', apiError.message);
+      return null;
+    }
 
     const rows = getSheetResponse.data.values || [];
-    if (rows.length < 2) return null;
+    console.log(`Sheet data for ${employeeName}:`, rows.length, 'rows');
+    if (rows.length > 0) {
+      console.log('First few rows:');
+      rows.slice(0, 5).forEach((row, i) => {
+        console.log(`  Row ${i}:`, row);
+      });
+    }
+    if (rows.length < 2) {
+      console.log(`No data found for ${employeeName} - only ${rows.length} rows`);
+      return null;
+    }
 
     const dateMatchingRows = rows.filter((row, index) => {
         if (index < 2 || !row[0]) return false;
         try {
-            const rowDate = parse(row[0], 'dd/MM/yyyy', new Date());
-            return isWithinInterval(rowDate, interval);
-        } catch {
+            // Try multiple date formats
+            let rowDate;
+            const dateStr = row[0].toString().trim();
+            
+            // Try dd/MM/yyyy format first
+            try {
+                rowDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+            } catch {
+                // Try MM/dd/yyyy format
+                try {
+                    rowDate = parse(dateStr, 'MM/dd/yyyy', new Date());
+                } catch {
+                    // Try other common formats
+                    rowDate = new Date(dateStr);
+                }
+            }
+            
+            if (isNaN(rowDate.getTime())) {
+                console.log(`Invalid date: ${dateStr}`);
+                return false;
+            }
+            
+            const isInRange = isWithinInterval(rowDate, interval);
+            console.log(`Row ${index}: ${dateStr} -> ${rowDate.toISOString()} -> In range: ${isInRange}`);
+            return isInRange;
+        } catch (e) {
+            console.log(`Failed to parse date: ${row[0]}`, e);
             return false;
         }
     });
 
+    console.log(`Found ${dateMatchingRows.length} matching rows for ${employeeName}`);
     if (dateMatchingRows.length === 0) {
+        console.log(`No matching rows for date range ${interval.start} to ${interval.end}`);
         return null;
     };
     
@@ -384,6 +631,7 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
       totalItems: 0,
       averageRunRate: 0,
       tasks: {},
+      detailedRecords: [],
     };
 
     for (const row of dateMatchingRows) {
@@ -420,6 +668,28 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
                     }
                     employeeData.tasks[taskName].quantity += quantity;
                     employeeData.tasks[taskName].duration += duration;
+                    
+                    // Add detailed record
+                    const portalName = row[startCol] || '';
+                    const estimatedEndTimeStr = row[startCol + 3] || '';
+                    const chetanRemarks = row[startCol + 5] || '';
+                    const ganesh = row[startCol + 6] || '';
+                    const finalRemarks = row[startCol + 7] || '';
+                    
+                    employeeData.detailedRecords.push({
+                      date: dateStr,
+                      taskName: taskName,
+                      portal: portalName,
+                      quantity: quantity,
+                      startTime: startTimeStr,
+                      estimatedEndTime: estimatedEndTimeStr,
+                      actualEndTime: endTimeStr,
+                      chetanRemarks: chetanRemarks,
+                      ganesh: ganesh,
+                      finalRemarks: finalRemarks,
+                      duration: duration,
+                      runRate: duration / quantity
+                    });
                   }
               }
            } catch(e) {
@@ -454,6 +724,10 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
         console.error(`Error processing sheet for ${employeeName}:`, error.message);
     }
     return null;
+  }
+  } catch (outerError: any) {
+    console.error(`Failed to get employee report for ${employeeName}:`, outerError);
+    throw new Error(`Failed to fetch report: ${outerError.message}`);
   }
 }
 

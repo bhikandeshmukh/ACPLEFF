@@ -202,7 +202,10 @@ export function TrackerForm() {
                 name="portalName"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Portal Name</FormLabel>
+                    <FormLabel>
+                      Portal Name
+                      <span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
                     <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
@@ -260,20 +263,31 @@ export function TrackerForm() {
               name="itemQty"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Item Qty</FormLabel>
+                  <FormLabel>
+                    Item Qty
+                    {watchedTaskName && watchedTaskName !== "OTHER WORK" && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
+                  </FormLabel>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <FormControl>
                       <Input
                         className="pl-10"
                         type="number"
-                        placeholder="0"
+                        placeholder={watchedTaskName === "OTHER WORK" ? "0 (optional)" : "Enter quantity"}
+                        min="0"
                         {...field}
                         onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
                         disabled={isSubmitting}
                       />
                     </FormControl>
                   </div>
+                  {watchedTaskName && watchedTaskName !== "OTHER WORK" && (
+                    <p className="text-xs text-muted-foreground">
+                      Item quantity is required for {watchedTaskName} task
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

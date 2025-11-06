@@ -27,6 +27,9 @@ import {
 import { cn } from '@/lib/utils';
 import { employees } from '@/lib/config';
 import { EmployeeReportCard } from '@/components/employee-report-card';
+import { getEmployeeReport, type EmployeeReport } from '@/app/server-actions';
+import { generateAllEmployeesPDF, downloadPDF } from '@/lib/pdf-utils';
+import { Download } from 'lucide-react';
 
 
 export default function ReportPage() {
@@ -34,6 +37,7 @@ export default function ReportPage() {
   const [selectedEmployee, setSelectedEmployee] = useState('All');
   const [reportParams, setReportParams] = useState<{date: DateRange, employee: string} | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloadingAllPDF, setDownloadingAllPDF] = useState(false);
 
   function generateReport() {
     if (date?.from) {
@@ -50,6 +54,35 @@ export default function ReportPage() {
     ? employees.map(e => e.name) 
     : [selectedEmployee];
 
+  const handleDownloadAllPDF = async () => {
+    if (!reportParams?.date.from) return;
+    
+    setDownloadingAllPDF(true);
+    try {
+      const allEmployeesData: EmployeeReport[] = [];
+      
+      // Fetch data for all employees
+      for (const employeeName of employeesToShow) {
+        const employeeData = await getEmployeeReport(reportParams.date as { from: Date; to: Date }, employeeName);
+        if (employeeData) {
+          allEmployeesData.push(employeeData);
+        }
+      }
+      
+      if (allEmployeesData.length > 0) {
+        const pdf = await generateAllEmployeesPDF(allEmployeesData, reportParams.date as { from: Date; to: Date });
+        const filename = selectedEmployee === 'All' 
+          ? `All_Employees_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`
+          : `${selectedEmployee}_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`;
+        downloadPDF(pdf, filename);
+      }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setDownloadingAllPDF(false);
+    }
+  };
+
   return (
     <div className="flex min-h-dvh flex-col items-center bg-background p-4 sm:p-6 md:p-8">
       <div className="w-full max-w-6xl">
@@ -61,7 +94,9 @@ export default function ReportPage() {
             </p>
           </div>
            <Link href="/" passHref>
-            <Button variant="outline"><Home className="mr-2 h-4 w-4" />Back to Home</Button>
+            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+              <Home className="mr-2 h-4 w-4" />Back to Home
+            </button>
           </Link>
         </header>
 
@@ -74,11 +109,10 @@ export default function ReportPage() {
                     </label>
                     <Popover>
                         <PopoverTrigger asChild>
-                        <Button
+                        <button
                             id="date"
-                            variant={'outline'}
                             className={cn(
-                            'w-full sm:w-[300px] justify-start text-left font-normal',
+                            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-[300px] justify-start text-left font-normal',
                             !date && 'text-muted-foreground'
                             )}
                         >
@@ -95,7 +129,7 @@ export default function ReportPage() {
                             ) : (
                             <span>Pick a date range</span>
                             )}
-                        </Button>
+                        </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
@@ -126,12 +160,28 @@ export default function ReportPage() {
                         </SelectContent>
                     </Select>
                 </div>
-               <Button onClick={generateReport} disabled={loading || !date?.from} className="self-end">
-                {loading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                View Report
-              </Button>
+              <div className="flex gap-2 self-end">
+                <Button onClick={generateReport} disabled={loading || !date?.from}>
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  View Report
+                </Button>
+                {reportParams && (
+                  <button
+                    onClick={handleDownloadAllPDF} 
+                    disabled={downloadingAllPDF || !reportParams?.date.from}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    {downloadingAllPDF ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="mr-2 h-4 w-4" />
+                    )}
+                    Download PDF
+                  </button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
