@@ -64,32 +64,37 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
           if (portalName && startTime && !actualEndTime) {
             console.log(`Found active task: ${taskName} for ${employeeName}`);
             
-            // Convert start time to full datetime
+            // Convert start time to full datetime (preserve original time)
             console.log(`Parsing start time: "${startTime}" with date: "${todayStr}"`);
             
-            // Try multiple time formats
+            // Create date object for today
+            const [day, month, year] = todayStr.split('/').map(Number);
             let startDateTime: Date;
-            try {
-              // Try with AM/PM format first
-              startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy hh:mm a', new Date());
-            } catch {
-              try {
-                // Try with different AM/PM format
-                startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy h:mm a', new Date());
-              } catch {
-                try {
-                  // Try 24-hour format
-                  startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy HH:mm', new Date());
-                } catch {
-                  // Fallback to current time if parsing fails
-                  console.error(`Failed to parse start time: ${startTime}`);
-                  startDateTime = new Date();
-                }
+            
+            // Parse time manually to avoid timezone issues
+            const timeMatch = startTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (!timeMatch) {
+              console.error(`Invalid time format: ${startTime}`);
+              startDateTime = new Date();
+            } else {
+              let hours = parseInt(timeMatch[1]);
+              const minutes = parseInt(timeMatch[2]);
+              const ampm = timeMatch[3].toUpperCase();
+              
+              // Convert to 24-hour format
+              if (ampm === 'PM' && hours !== 12) {
+                hours += 12;
+              } else if (ampm === 'AM' && hours === 12) {
+                hours = 0;
               }
+              
+              // Create date in local timezone
+              startDateTime = new Date(year, month - 1, day, hours, minutes, 0, 0);
             }
             
-            console.log(`Parsed start datetime:`, startDateTime);
+            console.log(`Parsed start datetime (local):`, startDateTime);
             console.log(`Start time in ISO:`, startDateTime.toISOString());
+            console.log(`Start time formatted back:`, format(startDateTime, 'hh:mm a'));
             
             const activeTask = {
               employeeName,
