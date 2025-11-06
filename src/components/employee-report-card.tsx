@@ -68,6 +68,8 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
 
       try {
         console.log(`Fetching report for ${employeeName} from ${from} to ${effectiveTo}`);
+        console.log(`Date objects - from:`, from, `to:`, effectiveTo);
+        console.log(`Date ISO strings - from:`, from.toISOString(), `to:`, effectiveTo.toISOString());
         const data = await getEmployeeReport({ from, to: effectiveTo }, employeeName);
         console.log(`Report data for ${employeeName}:`, data);
         setReportData(data);

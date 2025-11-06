@@ -731,6 +731,9 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     const startDate = new Date(dateRange.from);
     const endDate = new Date(dateRange.to);
     
+    console.log('Original dates:', { from: dateRange.from, to: dateRange.to });
+    console.log('Parsed dates before adjustment:', { start: startDate, end: endDate });
+    
     // Set start to beginning of day and end to end of day to avoid timezone issues
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
@@ -787,13 +790,17 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
             // Try dd/MM/yyyy format first
             try {
                 rowDate = parse(dateStr, 'dd/MM/yyyy', new Date());
+                // Ensure the parsed date is in local timezone
+                rowDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
             } catch {
                 // Try MM/dd/yyyy format
                 try {
                     rowDate = parse(dateStr, 'MM/dd/yyyy', new Date());
+                    rowDate.setHours(12, 0, 0, 0);
                 } catch {
                     // Try other common formats
                     rowDate = new Date(dateStr);
+                    rowDate.setHours(12, 0, 0, 0);
                 }
             }
             
@@ -802,8 +809,13 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
                 return false;
             }
             
-            const isInRange = isWithinInterval(rowDate, interval);
-            console.log(`Row ${index}: ${dateStr} -> ${rowDate.toISOString()} -> In range: ${isInRange}`);
+            // More flexible date comparison - check if dates match by day
+            const rowDateStr = format(rowDate, 'yyyy-MM-dd');
+            const startDateStr = format(interval.start, 'yyyy-MM-dd');
+            const endDateStr = format(interval.end, 'yyyy-MM-dd');
+            
+            const isInRange = rowDateStr >= startDateStr && rowDateStr <= endDateStr;
+            console.log(`Row ${index}: ${dateStr} -> ${rowDate.toISOString()} -> Date: ${rowDateStr} -> In range: ${isInRange}`);
             return isInRange;
         } catch (e) {
             console.log(`Failed to parse date: ${row[0]}`, e);
