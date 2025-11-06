@@ -182,28 +182,43 @@ export function EnhancedTrackerForm() {
   }
 
   async function onEndTask(data: EndTaskRecord) {
-    const response = await endTask(data);
-    if (response.success) {
-      toast({
-        title: "Task Completed!",
-        description: (response as any).message,
-        variant: "default",
-      });
+    console.log("🔴 End Task button clicked!", data);
+    console.log("🔴 Current active task:", activeTask);
+    
+    try {
+      const response = await endTask(data);
+      console.log("🔴 End task response:", response);
       
-      // Refresh active task from Google Sheets to ensure no stale data
-      if (selectedEmployee) {
-        const freshActiveTask = await getActiveTask(selectedEmployee);
-        setActiveTask(freshActiveTask);
+      if (response.success) {
+        toast({
+          title: "Task Completed!",
+          description: (response as any).message,
+          variant: "default",
+        });
+        
+        // Refresh active task from Google Sheets to ensure no stale data
+        if (selectedEmployee) {
+          const freshActiveTask = await getActiveTask(selectedEmployee);
+          setActiveTask(freshActiveTask);
+        } else {
+          setActiveTask(null);
+        }
+        
+        endForm.reset();
+        setSelectedEmployee("");
       } else {
-        setActiveTask(null);
+        console.error("🔴 End task failed:", response.error);
+        toast({
+          title: "Error",
+          description: response.error,
+          variant: "destructive",
+        });
       }
-      
-      endForm.reset();
-      setSelectedEmployee("");
-    } else {
+    } catch (error) {
+      console.error("🔴 End task exception:", error);
       toast({
         title: "Error",
-        description: response.error,
+        description: "Failed to end task. Please try again.",
         variant: "destructive",
       });
     }
@@ -362,7 +377,15 @@ export function EnhancedTrackerForm() {
         {/* End Task Form */}
         {activeTask && (
           <Form {...endForm}>
-            <form onSubmit={endForm.handleSubmit(onEndTask)} className="space-y-4 sm:space-y-6">
+            <form 
+              onSubmit={(e) => {
+                console.log("🔴 Form submit triggered!");
+                console.log("🔴 Form data:", endForm.getValues());
+                console.log("🔴 Form errors:", endForm.formState.errors);
+                return endForm.handleSubmit(onEndTask)(e);
+              }} 
+              className="space-y-4 sm:space-y-6"
+            >
               <div className="space-y-4 sm:space-y-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
                 <FormField
                   control={endForm.control}
@@ -418,7 +441,12 @@ export function EnhancedTrackerForm() {
                 />
               </div>
               
-              <Button type="submit" className="w-full" disabled={isEnding}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isEnding}
+                onClick={() => console.log("🔴 End Task button clicked directly!")}
+              >
                 {isEnding ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
