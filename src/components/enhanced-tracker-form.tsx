@@ -52,6 +52,7 @@ export function EnhancedTrackerForm() {
   const { toast } = useToast();
   const [activeTask, setActiveTask] = useState<ActiveTask | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   const startForm = useForm<StartTaskRecord>({
     resolver: zodResolver(StartTaskSchema),
@@ -97,6 +98,15 @@ export function EnhancedTrackerForm() {
     }
     checkActiveTask();
   }, [selectedEmployee, setStartValue, setEndValue]);
+
+  // Update current time every minute for real-time late status
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (watchedTaskName === "OTHER WORK") {
@@ -176,21 +186,21 @@ export function EnhancedTrackerForm() {
 
   return (
     <Card className="w-full shadow-lg">
-      <CardHeader>
-        <CardTitle>Task Tracker</CardTitle>
-        <CardDescription>
+      <CardHeader className="pb-4 sm:pb-6">
+        <CardTitle className="text-lg sm:text-xl">Task Tracker</CardTitle>
+        <CardDescription className="text-sm sm:text-base">
           {activeTask 
             ? `You have an active ${activeTask.taskName} task. Complete it to start a new task.`
             : "Start a new task by filling out the form below. Fields marked with * are required."
           }
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {/* Employee Selection */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <label className="block text-sm font-medium mb-2">Select Employee</label>
           <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-            <SelectTrigger>
+            <SelectTrigger className="h-10 sm:h-11">
               <div className="flex items-center">
                 <User className="mr-2 h-4 w-4 text-muted-foreground" />
                 <SelectValue placeholder="Select your name" />
@@ -207,45 +217,101 @@ export function EnhancedTrackerForm() {
         </div>
 
         {/* Active Task Display */}
-        {activeTask && (
-          <Card className="mb-6 bg-blue-50 border-blue-200">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <Clock className="mr-2 h-5 w-5 text-blue-600" />
-                Active Task
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Task:</span> {activeTask.taskName}
+        {activeTask && (() => {
+          // Calculate estimated end time
+          const startTime = new Date(activeTask.startTime);
+          const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
+          const totalDurationSeconds = activeTask.itemQty > 0 
+            ? activeTask.itemQty * durationPerItem 
+            : DEFAULT_DURATION_SECONDS;
+          const estimatedEndTime = addSeconds(startTime, totalDurationSeconds);
+          
+          // Check if task is late (using real-time current time)
+          const isLate = currentTime > estimatedEndTime;
+          const timeDifference = Math.abs(currentTime.getTime() - estimatedEndTime.getTime());
+          const minutesLate = Math.floor(timeDifference / (1000 * 60));
+          
+          return (
+            <Card className={`mb-4 sm:mb-6 ${isLate ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+              <CardHeader className="pb-2 sm:pb-3">
+                <CardTitle className="text-base sm:text-lg flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Clock className={`mr-2 h-4 w-4 sm:h-5 sm:w-5 ${isLate ? 'text-red-600' : 'text-blue-600'}`} />
+                    Active Task
+                  </div>
+                  {isLate && (
+                    <span className="text-xs sm:text-sm bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                      {minutesLate}m Late
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-sm">
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Task:</span> 
+                    <span className="sm:block">{activeTask.taskName}</span>
+                  </div>
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Portal:</span> 
+                    <span className="sm:block break-all">{activeTask.portalName || activeTask.otherTaskName}</span>
+                  </div>
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Items:</span> 
+                    <span className="sm:block">{activeTask.itemQty}</span>
+                  </div>
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Started:</span> 
+                    <span className="sm:block">{format(startTime, "hh:mm a")}</span>
+                  </div>
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Est. End:</span> 
+                    <span className={`sm:block ${isLate ? 'text-red-600 font-medium' : ''}`}>
+                      {format(estimatedEndTime, "hh:mm a")}
+                    </span>
+                  </div>
+                  <div className="flex justify-between sm:block">
+                    <span className="font-medium">Status:</span> 
+                    <span className={`sm:block font-medium ${isLate ? 'text-red-600' : 'text-green-600'}`}>
+                      {isLate ? `${minutesLate}m Late` : 'On Time'}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">Portal:</span> {activeTask.portalName || activeTask.otherTaskName}
+                
+                {/* Progress indicator */}
+                <div className="mt-3 sm:mt-4">
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Progress</span>
+                    <span>{isLate ? 'Overdue' : 'In Progress'}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        isLate ? 'bg-red-500' : 'bg-blue-500'
+                      }`}
+                      style={{
+                        width: isLate ? '100%' : `${Math.min(100, (timeDifference / (totalDurationSeconds * 1000)) * 100)}%`
+                      }}
+                    ></div>
+                  </div>
                 </div>
-                <div>
-                  <span className="font-medium">Items:</span> {activeTask.itemQty}
-                </div>
-                <div>
-                  <span className="font-medium">Started:</span> {format(new Date(activeTask.startTime), "hh:mm a")}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* End Task Form */}
         {activeTask && (
           <Form {...endForm}>
-            <form onSubmit={endForm.handleSubmit(onEndTask)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <form onSubmit={endForm.handleSubmit(onEndTask)} className="space-y-4 sm:space-y-6">
+              <div className="space-y-4 sm:space-y-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
                 <FormField
                   control={endForm.control}
                   name="endTime"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
                           <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <FormControl>
@@ -261,7 +327,7 @@ export function EnhancedTrackerForm() {
                           type="button"
                           onClick={() => setCurrentTime("endTime")}
                           disabled={isEnding}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:pointer-events-none disabled:opacity-50"
+                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
                         >
                           Now
                         </button>
@@ -313,7 +379,7 @@ export function EnhancedTrackerForm() {
         {/* Start Task Form */}
         {!activeTask && selectedEmployee && (
           <Form {...startForm}>
-            <form onSubmit={startForm.handleSubmit(onStartTask)} className="space-y-6">
+            <form onSubmit={startForm.handleSubmit(onStartTask)} className="space-y-4 sm:space-y-6">
               <FormField
                 control={startForm.control}
                 name="taskName"
@@ -451,7 +517,7 @@ export function EnhancedTrackerForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Start Time</FormLabel>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <FormControl>
@@ -467,7 +533,7 @@ export function EnhancedTrackerForm() {
                         type="button"
                         onClick={() => setCurrentTime("startTime")}
                         disabled={isStarting}
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:pointer-events-none disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
                       >
                         Now
                       </button>

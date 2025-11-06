@@ -84,128 +84,145 @@ export default function ReportPage() {
   };
 
   return (
-    <div className="flex min-h-dvh flex-col items-center bg-background p-4 sm:p-6 md:p-8">
-      <div className="w-full max-w-6xl">
-        <header className="mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-center sm:text-left">
-            <h1 className="text-3xl font-bold tracking-tight">Efficiency Report</h1>
-            <p className="text-muted-foreground">
-              Analyze employee performance over a selected date range.
-            </p>
-          </div>
-           <Link href="/" passHref>
-            <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-              <Home className="mr-2 h-4 w-4" />Back to Home
-            </button>
-          </Link>
-        </header>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-7xl mx-auto">
+          {/* Header */}
+          <header className="mb-6 sm:mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Efficiency Report</h1>
+              <p className="text-muted-foreground text-sm sm:text-base mt-1">
+                Analyze employee performance over a selected date range.
+              </p>
+            </div>
+            <Link href="/">
+              <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-9 sm:h-10 px-3 sm:px-4 transition-colors">
+                <Home className="h-4 w-4" />
+                <span className="hidden xs:inline">Back to Home</span>
+                <span className="xs:hidden">Home</span>
+              </button>
+            </Link>
+          </header>
 
-        <Card className="mb-8">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-                <div className="grid gap-2 flex-1">
-                    <label htmlFor="date-picker" className="font-medium text-sm">
-                        Select Date Range
-                    </label>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <button
-                            id="date"
-                            className={cn(
-                            'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 w-full sm:w-[300px] justify-start text-left font-normal',
-                            !date && 'text-muted-foreground'
-                            )}
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {date?.from ? (
-                            date.to ? (
-                                <>
-                                {format(date.from, 'LLL dd, y')} -{' '}
-                                {format(date.to, 'LLL dd, y')}
-                                </>
-                            ) : (
-                                format(date.from, 'LLL dd, y')
-                            )
-                            ) : (
-                            <span>Pick a date range</span>
-                            )}
-                        </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                            initialFocus
-                            mode="range"
-                            defaultMonth={date?.from}
-                            selected={date}
-                            onSelect={setDate}
-                            numberOfMonths={2}
-                        />
-                        </PopoverContent>
-                    </Popover>
+          {/* Controls Card */}
+          <Card className="mb-6 sm:mb-8">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="space-y-4 sm:space-y-0 sm:flex sm:items-end sm:gap-4">
+                {/* Date Range Picker */}
+                <div className="flex-1 space-y-2">
+                  <label htmlFor="date-picker" className="block font-medium text-sm">
+                    Select Date Range
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        id="date"
+                        className={cn(
+                          'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3 sm:px-4 w-full justify-start text-left font-normal',
+                          !date && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                          date.to ? (
+                            <>
+                              {format(date.from, 'LLL dd, y')} -{' '}
+                              {format(date.to, 'LLL dd, y')}
+                            </>
+                          ) : (
+                            format(date.from, 'LLL dd, y')
+                          )
+                        ) : (
+                          <span>Pick a date range</span>
+                        )}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <div className="grid gap-2 flex-1">
-                    <label htmlFor="employee-select" className="font-medium text-sm">
-                        Select Employee
-                    </label>
-                    <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
-                        <SelectTrigger id="employee-select" className="w-full sm:w-[300px]">
-                            <User className="mr-2 h-4 w-4" />
-                            <SelectValue placeholder="Select an employee" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="All">All Employees</SelectItem>
-                            {employees.map(emp => (
-                                <SelectItem key={emp.id} value={emp.name}>{emp.name}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+
+                {/* Employee Selection */}
+                <div className="flex-1 space-y-2">
+                  <label htmlFor="employee-select" className="block font-medium text-sm">
+                    Select Employee
+                  </label>
+                  <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                    <SelectTrigger id="employee-select" className="h-10">
+                      <User className="mr-2 h-4 w-4" />
+                      <SelectValue placeholder="Select an employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="All">All Employees</SelectItem>
+                      {employees.map(emp => (
+                        <SelectItem key={emp.id} value={emp.name}>{emp.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              <div className="flex gap-2 self-end">
-                <Button onClick={generateReport} disabled={loading || !date?.from}>
-                  {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  View Report
-                </Button>
-                {reportParams && (
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
                   <button
-                    onClick={handleDownloadAllPDF} 
-                    disabled={downloadingAllPDF || !reportParams?.date.from}
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 disabled:pointer-events-none disabled:opacity-50"
+                    onClick={generateReport} 
+                    disabled={loading || !date?.from}
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/95 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50"
                   >
-                    {downloadingAllPDF ? (
+                    {loading ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="mr-2 h-4 w-4" />
-                    )}
-                    Download PDF
+                    ) : null}
+                    View Report
                   </button>
-                )}
+                  {reportParams && (
+                    <button
+                      onClick={handleDownloadAllPDF} 
+                      disabled={downloadingAllPDF || !reportParams?.date.from}
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {downloadingAllPDF ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="mr-2 h-4 w-4" />
+                      )}
+                      Download PDF
+                    </button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center rounded-lg border border-dashed p-8 sm:p-12 text-center">
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 sm:h-10 sm:w-10 animate-spin text-muted-foreground" />
+                <p className="text-muted-foreground text-sm sm:text-base">Generating report, please wait...</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          )}
 
-        {loading && (
-          <div className="flex items-center justify-center rounded-lg border border-dashed p-12 text-center">
-            <div className="flex flex-col items-center gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                <p className="text-muted-foreground">Generating report, please wait...</p>
+          {/* Reports */}
+          {reportParams && !loading && (
+            <div className="w-full space-y-4">
+              {reportParams.date.from && employeesToShow.map(employeeName => (
+                <EmployeeReportCard 
+                  key={employeeName}
+                  employeeName={employeeName}
+                  dateRange={reportParams.date as { from: Date; to: Date; }}
+                />
+              ))}
             </div>
-          </div>
-        )}
-
-        {reportParams && !loading && (
-           <div className="w-full space-y-4">
-            {reportParams.date.from && employeesToShow.map(employeeName => (
-              <EmployeeReportCard 
-                key={employeeName}
-                employeeName={employeeName}
-                dateRange={reportParams.date as { from: Date; to: Date; }}
-              />
-            ))}
-           </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

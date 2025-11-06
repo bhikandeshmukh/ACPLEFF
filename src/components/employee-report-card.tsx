@@ -273,35 +273,89 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
                 <CardDescription>Complete breakdown of all tasks</CardDescription>
               </CardHeader>
               <CardContent className="px-0 pb-0">
-                <div className="overflow-x-auto">
-                  <Table>
+                {/* Mobile Card View */}
+                <div className="block sm:hidden space-y-3 p-4">
+                  {reportData.detailedRecords.map((record, index) => (
+                    <Card key={index} className="p-3 bg-muted/50">
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Date:</span>
+                          <span>{record.date}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Task:</span>
+                          <span className="font-semibold">{record.taskName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Portal:</span>
+                          <span className="break-all">{record.portal}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-medium">Quantity:</span>
+                          <span>{record.quantity}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="font-medium">Start:</span> {record.startTime}
+                          </div>
+                          <div>
+                            <span className="font-medium">End:</span> {record.actualEndTime}
+                          </div>
+                        </div>
+                        {(record.chetanRemarks || record.ganesh || record.finalRemarks) && (
+                          <div className="pt-2 border-t">
+                            {record.chetanRemarks && (
+                              <div className="text-xs">
+                                <span className="font-medium">Chetan:</span> {record.chetanRemarks}
+                              </div>
+                            )}
+                            {record.ganesh && (
+                              <div className="text-xs">
+                                <span className="font-medium">Ganesh:</span> {record.ganesh}
+                              </div>
+                            )}
+                            {record.finalRemarks && (
+                              <div className="text-xs">
+                                <span className="font-medium">Final:</span> {record.finalRemarks}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden sm:block overflow-x-auto mobile-scroll">
+                  <Table className="min-w-full">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="px-4">Date</TableHead>
-                        <TableHead className="px-4">Task</TableHead>
-                        <TableHead className="px-4">Portal</TableHead>
-                        <TableHead className="text-right px-4">No. Of Piece</TableHead>
-                        <TableHead className="px-4">Start Time</TableHead>
-                        <TableHead className="px-4">Estimated End Time</TableHead>
-                        <TableHead className="px-4">Actual End Time</TableHead>
-                        <TableHead className="px-4">Chetan Remarks</TableHead>
-                        <TableHead className="px-4">Ganesh</TableHead>
-                        <TableHead className="px-4">Final Remarks</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Date</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Task</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Portal</TableHead>
+                        <TableHead className="text-right px-2 sm:px-4 whitespace-nowrap">Qty</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Start</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Est End</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Act End</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Chetan</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Ganesh</TableHead>
+                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Final</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {reportData.detailedRecords.map((record, index) => (
                         <TableRow key={index}>
-                          <TableCell className="px-4">{record.date}</TableCell>
-                          <TableCell className="font-medium px-4">{record.taskName}</TableCell>
-                          <TableCell className="px-4">{record.portal}</TableCell>
-                          <TableCell className="text-right px-4">{record.quantity}</TableCell>
-                          <TableCell className="px-4">{record.startTime}</TableCell>
-                          <TableCell className="px-4">{record.estimatedEndTime}</TableCell>
-                          <TableCell className="px-4">{record.actualEndTime}</TableCell>
-                          <TableCell className="px-4">{record.chetanRemarks || '-'}</TableCell>
-                          <TableCell className="px-4">{record.ganesh || '-'}</TableCell>
-                          <TableCell className="px-4">{record.finalRemarks || '-'}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.date}</TableCell>
+                          <TableCell className="font-medium px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.taskName}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[120px] truncate" title={record.portal}>{record.portal}</TableCell>
+                          <TableCell className="text-right px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.quantity}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.startTime}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.estimatedEndTime}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.actualEndTime}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.chetanRemarks || '-'}>{record.chetanRemarks || '-'}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.ganesh || '-'}>{record.ganesh || '-'}</TableCell>
+                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.finalRemarks || '-'}>{record.finalRemarks || '-'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

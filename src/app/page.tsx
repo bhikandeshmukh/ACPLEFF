@@ -5,39 +5,60 @@ import { ActiveTaskStatus } from '@/components/active-task-status';
 
 export default function LandingPage() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-background p-4 antialiased">
-      <div className="w-full max-w-4xl mx-auto">
-        <header className="mb-12 flex justify-center">
-          <Logo />
-        </header>
-        <main className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <div className="text-center lg:text-left">
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold tracking-tight">Efficiency Recorder</h1>
-              <p className="text-muted-foreground mt-2">Select an option to continue</p>
+    <div className="min-h-screen bg-background">
+      {/* Mobile-first responsive container */}
+      <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="flex flex-col min-h-screen">
+          {/* Header */}
+          <header className="flex justify-center mb-8 sm:mb-12">
+            <Logo />
+          </header>
+
+          {/* Main Content */}
+          <main className="flex-1 flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+            {/* Left Section - Actions */}
+            <div className="w-full lg:w-1/2 text-center lg:text-left">
+              <div className="mb-6 sm:mb-8">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
+                  Efficiency Recorder
+                </h1>
+                <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+                  Select an option to continue
+                </p>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 sm:gap-4">
+                <Link href="/task" className="w-full">
+                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-base sm:text-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/95 h-12 sm:h-14 lg:h-16 px-4 sm:px-6 lg:px-8 w-full transition-colors">
+                    <FilePlus className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="hidden xs:inline">Submit New Task</span>
+                    <span className="xs:hidden">New Task</span>
+                  </button>
+                </Link>
+                <Link href="/report" className="w-full">
+                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-base sm:text-lg font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-12 sm:h-14 lg:h-16 px-4 sm:px-6 lg:px-8 w-full transition-colors">
+                    <LineChart className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="hidden xs:inline">View Report</span>
+                    <span className="xs:hidden">Reports</span>
+                  </button>
+                </Link>
+              </div>
             </div>
-            <div className="flex flex-col gap-4">
-              <Link href="/task" passHref className="w-full">
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-16 px-8 w-full">
-                  <FilePlus className="mr-3 h-6 w-6" />
-                  Submit New Task
-                </button>
-              </Link>
-              <Link href="/report" passHref className="w-full">
-                <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-lg font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-16 px-8 w-full">
-                  <LineChart className="mr-3 h-6 w-6" />
-                  View Report
-                </button>
-              </Link>
+
+            {/* Right Section - Active Task Status */}
+            <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
+              <div className="w-full max-w-md">
+                <ActiveTaskStatus />
+              </div>
             </div>
-          </div>
-          <div className="flex justify-center lg:justify-end">
-            <ActiveTaskStatus />
-          </div>
-        </main>
-        <footer className="mt-16 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Efficiency Recorder.</p>
-        </footer>
+          </main>
+
+          {/* Footer */}
+          <footer className="mt-8 sm:mt-12 lg:mt-16 text-center text-xs sm:text-sm text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} Efficiency Recorder.</p>
+          </footer>
+        </div>
       </div>
     </div>
   );
