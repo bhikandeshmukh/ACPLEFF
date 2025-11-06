@@ -26,6 +26,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     // Get today's date in DD/MM/YYYY format
     const today = new Date();
     const todayStr = format(today, 'dd/MM/yyyy');
+    console.log(`Today's date for checking: ${todayStr}`);
     
     // Get sheet data
     const getSheetResponse = await sheets.spreadsheets.values.get({
@@ -35,39 +36,79 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     
     const rows = getSheetResponse.data.values || [];
     
+    console.log(`Checking active tasks for ${employeeName} on ${todayStr}`);
+    console.log(`Found ${rows.length} rows in sheet`);
+    
     // Look for today's entries with missing end time (active tasks)
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i];
+      console.log(`Row ${i}: Date=${row[0]}, checking if matches ${todayStr}`);
+      
       if (row[0] === todayStr) {
+        console.log(`Found matching date row ${i}:`, row);
+        
         // Check each task column for active tasks
         for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
           const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
           const portalName = row[startCol];
           const itemQty = row[startCol + 1];
           const startTime = row[startCol + 2];
-          const endTime = row[startCol + 4]; // Actual End Time column
+          const estimatedEndTime = row[startCol + 3];
+          const actualEndTime = row[startCol + 4]; // Actual End Time column
+          const remarks = row[startCol + 5];
           
-          // If there's a start time but no end time, it's an active task
-          if (portalName && startTime && !endTime) {
-            const taskName = ALL_TASKS[taskIndex];
+          const taskName = ALL_TASKS[taskIndex];
+          console.log(`Task ${taskName}: Portal=${portalName}, StartTime=${startTime}, ActualEndTime=${actualEndTime}`);
+          
+          // If there's a start time but no actual end time, it's an active task
+          if (portalName && startTime && !actualEndTime) {
+            console.log(`Found active task: ${taskName} for ${employeeName}`);
             
             // Convert start time to full datetime
-            const startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy hh:mm a', new Date());
+            console.log(`Parsing start time: "${startTime}" with date: "${todayStr}"`);
             
-            return {
+            // Try multiple time formats
+            let startDateTime: Date;
+            try {
+              // Try with AM/PM format first
+              startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy hh:mm a', new Date());
+            } catch {
+              try {
+                // Try with different AM/PM format
+                startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy h:mm a', new Date());
+              } catch {
+                try {
+                  // Try 24-hour format
+                  startDateTime = parse(`${todayStr} ${startTime}`, 'dd/MM/yyyy HH:mm', new Date());
+                } catch {
+                  // Fallback to current time if parsing fails
+                  console.error(`Failed to parse start time: ${startTime}`);
+                  startDateTime = new Date();
+                }
+              }
+            }
+            
+            console.log(`Parsed start datetime:`, startDateTime);
+            console.log(`Start time in ISO:`, startDateTime.toISOString());
+            
+            const activeTask = {
               employeeName,
               portalName: taskName === "OTHER WORK" ? "" : portalName,
               taskName,
               otherTaskName: taskName === "OTHER WORK" ? portalName : undefined,
               itemQty: parseInt(itemQty) || 0,
               startTime: startDateTime.toISOString(),
-              remarks: row[startCol + 5] || ""
+              remarks: remarks || ""
             };
+            
+            console.log(`Returning active task:`, activeTask);
+            return activeTask;
           }
         }
       }
     }
     
+    console.log(`No active task found for ${employeeName} on ${todayStr}`);
     return null;
   } catch (error) {
     console.error(`Error checking active task for ${employeeName}:`, error);
