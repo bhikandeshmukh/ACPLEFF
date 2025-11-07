@@ -582,18 +582,21 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
     console.log(`Updating columns: endTime=${getColumnName(endTimeColIndex)}, finalRemarks=${getColumnName(finalRemarksColIndex)}`);
     
     // Parse the datetime-local string properly to avoid timezone issues
-    // endTime comes as "2025-11-07T07:29" format from datetime-local input
     console.log(`📝 Raw end time input: "${endTime}"`);
     
-    // Extract hours and minutes directly from the input string to avoid timezone conversion
-    const timeMatch = endTime.match(/T(\d{2}):(\d{2})/);
     let formattedEndTime: string;
     
-    if (timeMatch) {
-      const hours = parseInt(timeMatch[1], 10);
-      const minutes = parseInt(timeMatch[2], 10);
+    // Check if endTime is already an ISO string (with Z or timezone)
+    if (endTime.includes('Z') || endTime.match(/[+-]\d{2}:\d{2}$/)) {
+      console.log(`⚠️ Received ISO/UTC format, converting to local time`);
+      // This is already a full ISO string, parse it as Date
+      const endTimeDate = new Date(endTime);
       
-      console.log(`📝 Extracted: hours=${hours}, minutes=${minutes}`);
+      // Get local hours and minutes
+      const hours = endTimeDate.getHours();
+      const minutes = endTimeDate.getMinutes();
+      
+      console.log(`📝 Extracted from Date object: hours=${hours}, minutes=${minutes}`);
       
       // Convert to 12-hour format with AM/PM
       const period = hours >= 12 ? 'PM' : 'AM';
@@ -602,10 +605,31 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
       
       console.log(`📝 Converted: displayHours=${displayHours}, period=${period}, final="${formattedEndTime}"`);
     } else {
-      // Fallback: try to parse as Date and format
-      console.log(`⚠️ Regex failed, using fallback date parsing`);
-      const endTimeDate = new Date(endTime);
-      formattedEndTime = format(endTimeDate, 'hh:mm a');
+      // Extract hours and minutes directly from the datetime-local string
+      const timeMatch = endTime.match(/T(\d{2}):(\d{2})/);
+      
+      if (timeMatch) {
+        const hours = parseInt(timeMatch[1], 10);
+        const minutes = parseInt(timeMatch[2], 10);
+        
+        console.log(`📝 Extracted from string: hours=${hours}, minutes=${minutes}`);
+        
+        // Convert to 12-hour format with AM/PM
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+        
+        console.log(`📝 Converted: displayHours=${displayHours}, period=${period}, final="${formattedEndTime}"`);
+      } else {
+        // Fallback: try to parse as Date and format
+        console.log(`⚠️ Regex failed, using fallback date parsing`);
+        const endTimeDate = new Date(endTime);
+        const hours = endTimeDate.getHours();
+        const minutes = endTimeDate.getMinutes();
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+      }
     }
     
     console.log(`✅ Final formatted end time: "${formattedEndTime}"`);
