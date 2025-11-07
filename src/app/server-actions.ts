@@ -583,26 +583,32 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
     
     // Parse the datetime-local string properly to avoid timezone issues
     // endTime comes as "2025-11-07T07:29" format from datetime-local input
-    const endTimeDate = new Date(endTime);
+    console.log(`📝 Raw end time input: "${endTime}"`);
     
     // Extract hours and minutes directly from the input string to avoid timezone conversion
     const timeMatch = endTime.match(/T(\d{2}):(\d{2})/);
     let formattedEndTime: string;
     
     if (timeMatch) {
-      const hours = parseInt(timeMatch[1]);
-      const minutes = parseInt(timeMatch[2]);
+      const hours = parseInt(timeMatch[1], 10);
+      const minutes = parseInt(timeMatch[2], 10);
+      
+      console.log(`📝 Extracted: hours=${hours}, minutes=${minutes}`);
       
       // Convert to 12-hour format with AM/PM
       const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-      formattedEndTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+      const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+      formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+      
+      console.log(`📝 Converted: displayHours=${displayHours}, period=${period}, final="${formattedEndTime}"`);
     } else {
-      // Fallback to date formatting if regex fails
+      // Fallback: try to parse as Date and format
+      console.log(`⚠️ Regex failed, using fallback date parsing`);
+      const endTimeDate = new Date(endTime);
       formattedEndTime = format(endTimeDate, 'hh:mm a');
     }
     
-    console.log(`End time input: "${endTime}", formatted: "${formattedEndTime}"`);
+    console.log(`✅ Final formatted end time: "${formattedEndTime}"`);
     
     const updates = [
       {

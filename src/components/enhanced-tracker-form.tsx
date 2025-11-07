@@ -292,8 +292,11 @@ export function EnhancedTrackerForm() {
         
         startForm.reset();
         
-        // No auto-refresh - let the component update naturally
-        console.log("✅ Task started successfully, component will update automatically");
+        // Refresh page after task start to show End Task form
+        setTimeout(() => {
+          console.log("🔄 Refreshing page to show End Task form...");
+          window.location.reload();
+        }, 1000); // 1 second delay to show success message
         
       } else {
         toast({
