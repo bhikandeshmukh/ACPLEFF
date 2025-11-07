@@ -10,6 +10,7 @@ export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
   "RETURN": 65,
   "COCOBLU PO": 35,
   "BARCODE, TAGLOOP, BUTTON": 65,
+  "OTHER WORK": 60,
 };
 export const DEFAULT_DURATION_SECONDS = 40;
 
