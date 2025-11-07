@@ -588,22 +588,56 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
     
     // Check if endTime is already an ISO string (with Z or timezone)
     if (endTime.includes('Z') || endTime.match(/[+-]\d{2}:\d{2}$/)) {
-      console.log(`⚠️ Received ISO/UTC format, converting to local time`);
-      // This is already a full ISO string, parse it as Date
-      const endTimeDate = new Date(endTime);
+      console.log(`⚠️ Received ISO/UTC format, need to extract original local time`);
       
-      // Get local hours and minutes
-      const hours = endTimeDate.getHours();
-      const minutes = endTimeDate.getMinutes();
+      // The ISO string represents UTC time, but we need the original local time
+      // that was entered in the form. We need to parse it differently.
+      // Extract the time portion before the 'Z' or timezone
+      const timeMatch = endTime.match(/T(\d{2}):(\d{2}):(\d{2})/);
       
-      console.log(`📝 Extracted from Date object: hours=${hours}, minutes=${minutes}`);
-      
-      // Convert to 12-hour format with AM/PM
-      const period = hours >= 12 ? 'PM' : 'AM';
-      const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
-      formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
-      
-      console.log(`📝 Converted: displayHours=${displayHours}, period=${period}, final="${formattedEndTime}"`);
+      if (timeMatch) {
+        // These are the UTC hours/minutes, but we need to convert to IST
+        const utcHours = parseInt(timeMatch[1], 10);
+        const utcMinutes = parseInt(timeMatch[2], 10);
+        
+        console.log(`📝 UTC time: ${utcHours}:${utcMinutes}`);
+        
+        // Convert UTC to IST (UTC + 5:30)
+        let istHours = utcHours + 5;
+        let istMinutes = utcMinutes + 30;
+        
+        // Handle minute overflow
+        if (istMinutes >= 60) {
+          istMinutes -= 60;
+          istHours += 1;
+        }
+        
+        // Handle hour overflow
+        if (istHours >= 24) {
+          istHours -= 24;
+        }
+        
+        const hours = istHours;
+        const minutes = istMinutes;
+        
+        console.log(`📝 Converted to IST: hours=${hours}, minutes=${minutes}`);
+        
+        // Convert to 12-hour format with AM/PM
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+        
+        console.log(`📝 Converted: displayHours=${displayHours}, period=${period}, final="${formattedEndTime}"`);
+      } else {
+        // Fallback if regex fails
+        console.log(`⚠️ Could not parse ISO time, using Date object`);
+        const endTimeDate = new Date(endTime);
+        const hours = endTimeDate.getHours();
+        const minutes = endTimeDate.getMinutes();
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
+        formattedEndTime = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+      }
     } else {
       // Extract hours and minutes directly from the datetime-local string
       const timeMatch = endTime.match(/T(\d{2}):(\d{2})/);
