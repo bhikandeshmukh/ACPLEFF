@@ -1,5 +1,6 @@
 import { EnhancedTrackerForm } from '@/components/enhanced-tracker-form';
 import { Logo } from '@/components/logo';
+import { ErrorBoundary } from '@/components/error-boundary';
 import Link from 'next/link';
 
 import { Home } from 'lucide-react';
@@ -29,7 +30,9 @@ export default function TaskPage() {
 
           {/* Main Content */}
           <main className="pb-6">
-            <EnhancedTrackerForm />
+            <ErrorBoundary>
+              <EnhancedTrackerForm />
+            </ErrorBoundary>
           </main>
 
           {/* Footer */}

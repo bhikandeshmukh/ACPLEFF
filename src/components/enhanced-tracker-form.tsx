@@ -42,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SimpleMobileDateTime } from "@/components/ui/simple-mobile-datetime";
 import { useToast } from "@/hooks/use-toast";
 import { employees, portals, tasks, TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS } from "@/lib/config";
 import { StartTaskSchema, EndTaskSchema, type StartTaskRecord, type EndTaskRecord, type ActiveTask } from "@/lib/definitions";
@@ -482,26 +483,27 @@ export function EnhancedTrackerForm() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>End Time</FormLabel>
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <div className="relative flex-1">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                          <FormControl>
-                            <Input
-                              className="pl-10"
-                              type="datetime-local"
-                              {...field}
-                              disabled={isEnding}
-                            />
-                          </FormControl>
-                        </div>
-                        <button
+                      <div className="space-y-3">
+                        <SimpleMobileDateTime
+                          date={field.value ? new Date(field.value) : undefined}
+                          onDateChange={(date) => {
+                            field.onChange(date ? date.toISOString() : "")
+                          }}
+                          placeholder="Select end time"
+                          disabled={isEnding}
+                          className="w-full"
+                        />
+                        <Button
                           type="button"
                           onClick={() => setCurrentTimeField("endTime")}
                           disabled={isEnding}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
+                          size="lg"
+                          variant="outline"
+                          className="w-full h-12 text-base font-medium touch-manipulation"
                         >
-                          Now
-                        </button>
+                          <Clock className="mr-2 h-4 w-4" />
+                          Set Current Time
+                        </Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -532,7 +534,8 @@ export function EnhancedTrackerForm() {
               
               <Button 
                 type="submit" 
-                className="w-full" 
+                size="lg"
+                className="w-full h-12 text-base font-medium touch-manipulation" 
                 disabled={isEnding}
                 onClick={() => console.log("🔴 End Task button clicked directly!")}
               >
@@ -708,26 +711,32 @@ export function EnhancedTrackerForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Start Time</FormLabel>
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <div className="relative flex-1">
                         <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <FormControl>
                           <Input
-                            className="pl-10"
+                            className="pl-10 h-12 text-base"
                             type="datetime-local"
                             {...field}
                             disabled={isStarting}
+                            style={{
+                              WebkitAppearance: 'none',
+                              MozAppearance: 'textfield'
+                            }}
                           />
                         </FormControl>
                       </div>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setCurrentTimeField("startTime")}
                         disabled={isStarting}
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50 sm:w-auto w-full sm:min-w-[80px] flex-shrink-0"
+                        size="lg"
+                        variant="outline"
+                        className="h-12 px-6 text-base font-medium touch-manipulation sm:w-auto w-full sm:min-w-[100px] flex-shrink-0"
                       >
                         Now
-                      </button>
+                      </Button>
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -756,7 +765,7 @@ export function EnhancedTrackerForm() {
                 )}
               />
               
-              <Button type="submit" className="w-full" disabled={isStarting}>
+              <Button type="submit" size="lg" className="w-full h-12 text-base font-medium touch-manipulation" disabled={isStarting}>
                 {isStarting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
