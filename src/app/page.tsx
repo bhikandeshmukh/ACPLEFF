@@ -19,9 +19,9 @@ export default function LandingPage() {
           </header>
 
           {/* Main Content */}
-          <main className="flex-1 flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
-            {/* Left Section - Actions */}
-            <div className="w-full lg:w-1/2 text-center lg:text-left">
+          <main className="flex-1 flex flex-col gap-6 lg:gap-8 items-center">
+            {/* Actions Section */}
+            <div className="w-full max-w-md text-center">
               <div className="mb-6 sm:mb-8">
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight">
                   Efficiency Recorder
@@ -32,7 +32,7 @@ export default function LandingPage() {
               </div>
               
               {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row lg:flex-col gap-3 sm:gap-4">
+              <div className="flex flex-col gap-3 sm:gap-4">
                 <Link href="/task" className="w-full">
                   <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-base sm:text-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/95 h-12 sm:h-14 lg:h-16 px-4 sm:px-6 lg:px-8 w-full transition-colors">
                     <FilePlus className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -50,11 +50,9 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right Section - Active Task Status */}
-            <div className="w-full lg:w-1/2 flex justify-center lg:justify-end">
-              <div className="w-full max-w-md">
-                <ActiveTaskStatus />
-              </div>
+            {/* Active Task Status - Below Reports */}
+            <div className="w-full max-w-md">
+              <ActiveTaskStatus />
             </div>
           </main>
 

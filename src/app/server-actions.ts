@@ -1167,22 +1167,37 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
         const endTimeStr = row[startCol + 4];
         const dateStr = row[0];
 
-        if (startTimeStr && endTimeStr && itemQtyStr && dateStr) {
+        console.log(`Processing ${taskName}: itemQty=${itemQtyStr}, start=${startTimeStr}, end=${endTimeStr}`);
+
+        // Process task if it has start time and item quantity (end time is optional)
+        if (startTimeStr && itemQtyStr && dateStr) {
            try {
               const baseDate = parse(dateStr, 'dd/MM/yyyy', new Date());
               const startTime = parse(startTimeStr, 'hh:mm a', baseDate);
-              const endTime = parse(endTimeStr, 'hh:mm a', baseDate);
+              const quantity = parseInt(itemQtyStr, 10) || 0;
 
-              if (!isNaN(startTime.getTime()) && !isNaN(endTime.getTime())) {
-                  let duration = differenceInSeconds(endTime, startTime);
-                  // If end time is earlier than start time, it implies next day
-                  if (duration < 0) {
-                      duration += 24 * 60 * 60; // Add 24 hours in seconds
-                  }
+              if (!isNaN(startTime.getTime()) && quantity > 0) {
+                  let duration = 0;
+                  let actualEndTime = endTimeStr;
                   
-                  const quantity = parseInt(itemQtyStr, 10) || 0;
+                  // If end time exists, calculate duration
+                  if (endTimeStr) {
+                    const endTime = parse(endTimeStr, 'hh:mm a', baseDate);
+                    if (!isNaN(endTime.getTime())) {
+                      duration = differenceInSeconds(endTime, startTime);
+                      // If end time is earlier than start time, it implies next day
+                      if (duration < 0) {
+                          duration += 24 * 60 * 60; // Add 24 hours in seconds
+                      }
+                    }
+                  } else {
+                    // If no end time, use estimated end time or mark as "In Progress"
+                    actualEndTime = "In Progress";
+                    duration = 0; // Don't count duration for incomplete tasks
+                  }
 
-                  if (quantity > 0) {
+                  // Add to totals only if task is complete (has end time)
+                  if (endTimeStr) {
                     employeeData.totalWorkTime += duration;
                     employeeData.totalItems += quantity;
 
@@ -1191,29 +1206,29 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
                     }
                     employeeData.tasks[taskName].quantity += quantity;
                     employeeData.tasks[taskName].duration += duration;
-                    
-                    // Add detailed record
-                    const portalName = row[startCol] || '';
-                    const estimatedEndTimeStr = row[startCol + 3] || '';
-                    const chetanRemarks = row[startCol + 5] || '';
-                    const ganesh = row[startCol + 6] || '';
-                    const finalRemarks = row[startCol + 7] || '';
-                    
-                    employeeData.detailedRecords.push({
-                      date: dateStr,
-                      taskName: taskName,
-                      portal: portalName,
-                      quantity: quantity,
-                      startTime: startTimeStr,
-                      estimatedEndTime: estimatedEndTimeStr,
-                      actualEndTime: endTimeStr,
-                      chetanRemarks: chetanRemarks,
-                      ganesh: ganesh,
-                      finalRemarks: finalRemarks,
-                      duration: duration,
-                      runRate: duration / quantity
-                    });
                   }
+                  
+                  // Add detailed record (for both complete and incomplete tasks)
+                  const portalName = row[startCol] || '';
+                  const estimatedEndTimeStr = row[startCol + 3] || '';
+                  const chetanRemarks = row[startCol + 5] || '';
+                  const ganesh = row[startCol + 6] || '';
+                  const finalRemarks = row[startCol + 7] || '';
+                  
+                  employeeData.detailedRecords.push({
+                    date: dateStr,
+                    taskName: taskName,
+                    portal: portalName,
+                    quantity: quantity,
+                    startTime: startTimeStr,
+                    estimatedEndTime: estimatedEndTimeStr,
+                    actualEndTime: actualEndTime,
+                    chetanRemarks: chetanRemarks,
+                    ganesh: ganesh,
+                    finalRemarks: finalRemarks,
+                    duration: duration,
+                    runRate: duration > 0 ? duration / quantity : 0
+                  });
               }
            } catch(e) {
               console.error(`Could not parse time for ${employeeName}, task ${taskName}:`, e);
@@ -1236,7 +1251,8 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
         employeeData.averageRunRate = employeeData.totalWorkTime / employeeData.totalItems;
     }
     
-    if(employeeData.totalItems > 0) {
+    // Return data if there are any records (complete or incomplete)
+    if(employeeData.detailedRecords.length > 0) {
       return employeeData;
     }
 
