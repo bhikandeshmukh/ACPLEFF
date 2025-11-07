@@ -15,6 +15,7 @@ import {
   Pencil,
   Play,
   Square,
+  RefreshCw,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -132,44 +133,57 @@ export function EnhancedTrackerForm() {
   useEffect(() => {
     async function checkActiveTask() {
       if (selectedEmployee) {
-        // First check localStorage for active task
-        const savedActiveTask = localStorage.getItem(ACTIVE_TASK_KEY);
-        if (savedActiveTask) {
-          try {
-            const parsedTask = JSON.parse(savedActiveTask);
-            // Verify the saved task belongs to the selected employee
-            if (parsedTask.employeeName === selectedEmployee) {
-              setActiveTask(parsedTask);
-              setEndValue("employeeName", selectedEmployee);
-              console.log("📱 Using active task from localStorage for", selectedEmployee);
-              return; // Skip server check if we have valid localStorage data
-            } else {
-              // Clear localStorage if employee doesn't match
-              localStorage.removeItem(ACTIVE_TASK_KEY);
-            }
-          } catch (error) {
-            console.error("Error parsing saved active task:", error);
-            localStorage.removeItem(ACTIVE_TASK_KEY);
-          }
-        }
-
-        // If no valid localStorage data, check server
         setCheckingActiveTask(true);
         try {
+          // Always check server first for fresh data (critical for multi-user scenario)
+          console.log("🔍 Checking Google Sheets for active task for", selectedEmployee);
           const active = await getActiveTask(selectedEmployee);
-          setActiveTask(active);
+          
           if (active) {
+            setActiveTask(active);
             setEndValue("employeeName", selectedEmployee);
-            console.log("📡 Got active task from server for", selectedEmployee);
+            // Update localStorage with fresh server data
+            localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(active));
+            console.log("📡 Found active task from server for", selectedEmployee, active);
           } else {
+            // No active task found on server
+            setActiveTask(null);
             setStartValue("employeeName", selectedEmployee);
+            // Clear any stale localStorage data
+            localStorage.removeItem(ACTIVE_TASK_KEY);
             console.log("📡 No active task from server for", selectedEmployee);
           }
         } catch (error) {
           console.error("Error checking active task:", error);
+          
+          // Fallback to localStorage only if server fails
+          const savedActiveTask = localStorage.getItem(ACTIVE_TASK_KEY);
+          if (savedActiveTask) {
+            try {
+              const parsedTask = JSON.parse(savedActiveTask);
+              if (parsedTask.employeeName === selectedEmployee) {
+                setActiveTask(parsedTask);
+                setEndValue("employeeName", selectedEmployee);
+                console.log("📱 Fallback: Using active task from localStorage for", selectedEmployee);
+              } else {
+                localStorage.removeItem(ACTIVE_TASK_KEY);
+                setActiveTask(null);
+                setStartValue("employeeName", selectedEmployee);
+              }
+            } catch (parseError) {
+              console.error("Error parsing saved active task:", parseError);
+              localStorage.removeItem(ACTIVE_TASK_KEY);
+              setActiveTask(null);
+              setStartValue("employeeName", selectedEmployee);
+            }
+          } else {
+            setActiveTask(null);
+            setStartValue("employeeName", selectedEmployee);
+          }
+          
           toast({
-            title: "Error",
-            description: "Failed to check active task status. Please try again.",
+            title: "Warning",
+            description: "Could not verify active task status from server. Using local data if available.",
             variant: "destructive",
           });
         } finally {
@@ -191,6 +205,43 @@ export function EnhancedTrackerForm() {
 
     return () => clearInterval(timer);
   }, []);
+
+  // Auto-refresh active task status every 30 seconds for multi-user sync
+  useEffect(() => {
+    if (!selectedEmployee) return;
+
+    const refreshActiveTask = async () => {
+      try {
+        console.log("🔄 Auto-refreshing active task status for", selectedEmployee);
+        const active = await getActiveTask(selectedEmployee);
+        
+        // Only update if there's a change to avoid unnecessary re-renders
+        const currentActiveTaskStr = activeTask ? JSON.stringify(activeTask) : null;
+        const newActiveTaskStr = active ? JSON.stringify(active) : null;
+        
+        if (currentActiveTaskStr !== newActiveTaskStr) {
+          console.log("🔄 Active task status changed for", selectedEmployee);
+          setActiveTask(active);
+          
+          if (active) {
+            setEndValue("employeeName", selectedEmployee);
+            localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(active));
+          } else {
+            setStartValue("employeeName", selectedEmployee);
+            localStorage.removeItem(ACTIVE_TASK_KEY);
+          }
+        }
+      } catch (error) {
+        console.error("Error auto-refreshing active task:", error);
+        // Don't show toast for auto-refresh errors to avoid spam
+      }
+    };
+
+    // Set up interval for auto-refresh every 30 seconds
+    const refreshInterval = setInterval(refreshActiveTask, 30000);
+
+    return () => clearInterval(refreshInterval);
+  }, [selectedEmployee, activeTask, setStartValue, setEndValue]);
 
   useEffect(() => {
     if (watchedTaskName === "OTHER WORK") {
@@ -241,11 +292,8 @@ export function EnhancedTrackerForm() {
         
         startForm.reset();
         
-        // Auto refresh page after successful task start
-        setTimeout(() => {
-          console.log("🔄 Auto refreshing page after task start...");
-          window.location.reload();
-        }, 1500); // Small delay to show the success toast
+        // No auto-refresh - let the component update naturally
+        console.log("✅ Task started successfully, component will update automatically");
         
       } else {
         toast({
@@ -368,6 +416,51 @@ export function EnhancedTrackerForm() {
               <Loader2 className="mr-1 h-3 w-3 animate-spin" />
               Checking Google Sheets for active tasks...
             </p>
+          )}
+          
+          {/* Manual Refresh Button */}
+          {selectedEmployee && !checkingActiveTask && (
+            <div className="mt-3 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">
+                Last checked: {new Date().toLocaleTimeString()}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  setCheckingActiveTask(true);
+                  try {
+                    const active = await getActiveTask(selectedEmployee);
+                    setActiveTask(active);
+                    if (active) {
+                      setEndValue("employeeName", selectedEmployee);
+                      localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(active));
+                    } else {
+                      setStartValue("employeeName", selectedEmployee);
+                      localStorage.removeItem(ACTIVE_TASK_KEY);
+                    }
+                    toast({
+                      title: "Refreshed",
+                      description: "Active task status updated from server.",
+                      variant: "default",
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Error",
+                      description: "Failed to refresh active task status.",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setCheckingActiveTask(false);
+                  }
+                }}
+                disabled={checkingActiveTask}
+                className="h-8 px-3 text-xs"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Refresh
+              </Button>
+            </div>
           )}
         </div>
 

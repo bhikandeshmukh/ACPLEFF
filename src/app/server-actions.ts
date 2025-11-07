@@ -35,11 +35,10 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`Today's date for checking: ${todayStr}`);
     
     // Get sheet data (force fresh data, no cache)
-    console.log(`🔍 Fetching data from sheet: "${employeeName}"`);
+    console.log(`🔍 Fetching data from sheet: "${employeeName}" at ${new Date().toISOString()}`);
     const getSheetResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${employeeName}!A1:ZZ1000`,
-      // Add timestamp to force fresh data
+      range: `${employeeName}!A1:ZZ1000?timestamp=${Date.now()}`, // Cache busting
       majorDimension: 'ROWS',
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING'
