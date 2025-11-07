@@ -29,10 +29,9 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
       return null;
     }
 
-    // Get today's date in DD/MM/YYYY format
-    const today = new Date();
-    const todayStr = format(today, 'dd/MM/yyyy');
-    console.log(`Today's date for checking: ${todayStr}`);
+    // Note: We check ALL dates for active tasks, not just today
+    // Tasks can be pending from any previous date
+    console.log(`Checking for any active/pending tasks (any date)`);
     
     // Get sheet data (force fresh data, no cache)
     console.log(`🔍 Fetching data from sheet: "${employeeName}" at ${new Date().toISOString()}`);
@@ -47,7 +46,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     
     const rows = getSheetResponse.data.values || [];
     
-    console.log(`Checking active tasks for ${employeeName} on ${todayStr}`);
+    console.log(`Checking active/pending tasks for ${employeeName} (all dates)`);
     console.log(`Found ${rows.length} rows in sheet`);
     
     // Debug: Show first few rows
@@ -56,52 +55,47 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
       console.log(`Row ${i}:`, rows[i]);
     }
     
-    // Look for entries with missing end time (active tasks)
-    // Check today and yesterday's entries (in case task started yesterday and still active)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = format(yesterday, 'dd/MM/yyyy');
-    
+    // Look for ANY entries with missing end time (active/pending tasks)
+    // Don't filter by date - task can be from any date and still be pending/active
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i];
       const rowDate = row[0];
-      console.log(`Row ${i}: Date="${rowDate}", checking if matches "${todayStr}" or "${yesterdayStr}"`);
       
-      // Check for today or yesterday (for tasks that might still be active from yesterday)
-      const dateMatches = rowDate === todayStr || 
-                         rowDate === yesterdayStr ||
-                         rowDate === format(new Date(), 'dd/MM/yyyy') ||
-                         rowDate === format(new Date(), 'MM/dd/yyyy') ||
-                         rowDate === format(yesterday, 'dd/MM/yyyy');
+      // Skip rows without a date
+      if (!rowDate) {
+        continue;
+      }
       
-      if (dateMatches) {
-        console.log(`✅ Found matching date row ${i}:`, row);
+      console.log(`Row ${i}: Date="${rowDate}", checking for active tasks...`);
+      
+      // Check each task column for active tasks (regardless of date)
+      for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
+        const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+        const portalName = row[startCol] || '';
+        const itemQty = row[startCol + 1] || 0;
+        const startTime = row[startCol + 2] || '';
+        const estimatedEndTime = row[startCol + 3] || '';
+        const actualEndTime = row[startCol + 4] || ''; // Actual End Time column
+        const remarks = row[startCol + 5] || '';
         
-        // Check each task column for active tasks
-        for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
-          const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
-          const portalName = row[startCol] || '';
-          const itemQty = row[startCol + 1] || 0;
-          const startTime = row[startCol + 2] || '';
-          const estimatedEndTime = row[startCol + 3] || '';
-          const actualEndTime = row[startCol + 4] || ''; // Actual End Time column
-          const remarks = row[startCol + 5] || '';
+        const taskName = ALL_TASKS[taskIndex];
+        
+        // If there's a portal/start time but no actual end time, it's an active task
+        // Also check if actualEndTime is undefined (cell doesn't exist in array)
+        const hasNoEndTime = !actualEndTime || actualEndTime === '' || actualEndTime === null || actualEndTime === undefined;
+        
+        if (portalName && startTime && hasNoEndTime) {
+          console.log(`🎯 Found active/pending task: ${taskName} for ${employeeName} on date ${rowDate}`);
+          console.log(`   Portal="${portalName}", StartTime="${startTime}", ActualEndTime="${actualEndTime}"`);
           
-          const taskName = ALL_TASKS[taskIndex];
-          console.log(`🔍 Task ${taskName} (col ${startCol}): Portal="${portalName}", StartTime="${startTime}", ActualEndTime="${actualEndTime}", HasEndTime=${!!actualEndTime}`);
-          
-          // If there's a portal/start time but no actual end time, it's an active task
-          // Also check if actualEndTime is undefined (cell doesn't exist in array)
-          const hasNoEndTime = !actualEndTime || actualEndTime === '' || actualEndTime === null || actualEndTime === undefined;
-          
-          if (portalName && startTime && hasNoEndTime) {
-            console.log(`🎯 Found active task: ${taskName} for ${employeeName}`);
+          // Return the FIRST active task found (oldest pending task)
+          // This ensures if multiple tasks are pending, we get the oldest one first
             
             // Convert start time to full datetime (preserve original time)
-            console.log(`Parsing start time: "${startTime}" with date: "${todayStr}"`);
+            console.log(`Parsing start time: "${startTime}" with date: "${rowDate}"`);
             
-            // Create date object for today
-            const [day, month, year] = todayStr.split('/').map(Number);
+            // Create date object from the row date
+            const [day, month, year] = rowDate.split('/').map(Number);
             let startDateTime: Date;
             
             // Parse time manually to avoid timezone issues
@@ -141,12 +135,11 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
             
             console.log(`Returning active task:`, activeTask);
             return activeTask;
-          }
         }
       }
     }
     
-    console.log(`No active task found for ${employeeName} on ${todayStr}`);
+    console.log(`No active/pending task found for ${employeeName} (checked all dates)`);
     return null;
   } catch (error) {
     console.error(`Error checking active task for ${employeeName}:`, error);

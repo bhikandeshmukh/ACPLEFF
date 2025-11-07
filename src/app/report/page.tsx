@@ -83,9 +83,11 @@ export default function ReportPage() {
       
       // Always generate PDF since we now include all employees (even with no data)
       const pdf = await generateAllEmployeesPDF(allEmployeesData, reportParams.date as { from: Date; to: Date });
+      const fromDate = format(reportParams.date.from, 'dd-MM-yyyy');
+      const toDate = format(reportParams.date.to || reportParams.date.from, 'dd-MM-yyyy');
       const filename = selectedEmployee === 'All' 
-        ? `All_Employees_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`
-        : `${selectedEmployee}_Report_${reportParams.date.from.toISOString().split('T')[0]}_to_${reportParams.date.to?.toISOString().split('T')[0] || reportParams.date.from.toISOString().split('T')[0]}.pdf`;
+        ? `All_Employees_Report_${fromDate}_to_${toDate}.pdf`
+        : `${selectedEmployee}_Report_${fromDate}_to_${toDate}.pdf`;
       downloadPDF(pdf, filename);
     } catch (error) {
       console.error('Error generating PDF:', error);

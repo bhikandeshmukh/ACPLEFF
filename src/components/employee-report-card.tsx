@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/table';
 import { getEmployeeReport, type EmployeeReport, type TaskRecord } from '@/app/server-actions';
 import { generateEmployeePDF, downloadPDF } from '@/lib/pdf-utils';
+import { format } from 'date-fns';
 import { Download } from 'lucide-react';
 
 type EmployeeReportCardProps = {
@@ -90,7 +91,7 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
     setDownloadingPDF(true);
     try {
       const pdf = await generateEmployeePDF(reportData, dateRange);
-      const filename = `${employeeName}_Report_${dateRange.from.toISOString().split('T')[0]}_to_${dateRange.to.toISOString().split('T')[0]}.pdf`;
+      const filename = `${employeeName}_Report_${format(dateRange.from, 'dd-MM-yyyy')}_to_${format(dateRange.to, 'dd-MM-yyyy')}.pdf`;
       downloadPDF(pdf, filename);
     } catch (error) {
       console.error('Error generating PDF:', error);
