@@ -56,17 +56,23 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
       console.log(`Row ${i}:`, rows[i]);
     }
     
-    // Look for today's entries with missing end time (active tasks)
+    // Look for entries with missing end time (active tasks)
+    // Check today and yesterday's entries (in case task started yesterday and still active)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = format(yesterday, 'dd/MM/yyyy');
+    
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i];
       const rowDate = row[0];
-      console.log(`Row ${i}: Date="${rowDate}", checking if matches "${todayStr}"`);
+      console.log(`Row ${i}: Date="${rowDate}", checking if matches "${todayStr}" or "${yesterdayStr}"`);
       
-      // More flexible date matching
+      // Check for today or yesterday (for tasks that might still be active from yesterday)
       const dateMatches = rowDate === todayStr || 
+                         rowDate === yesterdayStr ||
                          rowDate === format(new Date(), 'dd/MM/yyyy') ||
                          rowDate === format(new Date(), 'MM/dd/yyyy') ||
-                         rowDate === format(new Date(), 'yyyy-MM-dd');
+                         rowDate === format(yesterday, 'dd/MM/yyyy');
       
       if (dateMatches) {
         console.log(`✅ Found matching date row ${i}:`, row);
@@ -74,18 +80,21 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
         // Check each task column for active tasks
         for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
           const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
-          const portalName = row[startCol];
-          const itemQty = row[startCol + 1];
-          const startTime = row[startCol + 2];
-          const estimatedEndTime = row[startCol + 3];
-          const actualEndTime = row[startCol + 4]; // Actual End Time column
-          const remarks = row[startCol + 5];
+          const portalName = row[startCol] || '';
+          const itemQty = row[startCol + 1] || 0;
+          const startTime = row[startCol + 2] || '';
+          const estimatedEndTime = row[startCol + 3] || '';
+          const actualEndTime = row[startCol + 4] || ''; // Actual End Time column
+          const remarks = row[startCol + 5] || '';
           
           const taskName = ALL_TASKS[taskIndex];
-          console.log(`🔍 Task ${taskName} (col ${startCol}): Portal="${portalName}", StartTime="${startTime}", ActualEndTime="${actualEndTime}"`);
+          console.log(`🔍 Task ${taskName} (col ${startCol}): Portal="${portalName}", StartTime="${startTime}", ActualEndTime="${actualEndTime}", HasEndTime=${!!actualEndTime}`);
           
-          // If there's a start time but no actual end time, it's an active task
-          if (portalName && startTime && (!actualEndTime || actualEndTime === '')) {
+          // If there's a portal/start time but no actual end time, it's an active task
+          // Also check if actualEndTime is undefined (cell doesn't exist in array)
+          const hasNoEndTime = !actualEndTime || actualEndTime === '' || actualEndTime === null || actualEndTime === undefined;
+          
+          if (portalName && startTime && hasNoEndTime) {
             console.log(`🎯 Found active task: ${taskName} for ${employeeName}`);
             
             // Convert start time to full datetime (preserve original time)
