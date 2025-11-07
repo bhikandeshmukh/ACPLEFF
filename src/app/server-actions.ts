@@ -38,7 +38,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`🔍 Fetching data from sheet: "${employeeName}" at ${new Date().toISOString()}`);
     const getSheetResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: `${employeeName}!A1:ZZ1000?timestamp=${Date.now()}`, // Cache busting
+      range: `${employeeName}!A1:ZZ1000`,
       majorDimension: 'ROWS',
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING'
@@ -50,13 +50,26 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`Checking active tasks for ${employeeName} on ${todayStr}`);
     console.log(`Found ${rows.length} rows in sheet`);
     
+    // Debug: Show first few rows
+    console.log('First 5 rows of data:');
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+      console.log(`Row ${i}:`, rows[i]);
+    }
+    
     // Look for today's entries with missing end time (active tasks)
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i];
-      console.log(`Row ${i}: Date=${row[0]}, checking if matches ${todayStr}`);
+      const rowDate = row[0];
+      console.log(`Row ${i}: Date="${rowDate}", checking if matches "${todayStr}"`);
       
-      if (row[0] === todayStr) {
-        console.log(`Found matching date row ${i}:`, row);
+      // More flexible date matching
+      const dateMatches = rowDate === todayStr || 
+                         rowDate === format(new Date(), 'dd/MM/yyyy') ||
+                         rowDate === format(new Date(), 'MM/dd/yyyy') ||
+                         rowDate === format(new Date(), 'yyyy-MM-dd');
+      
+      if (dateMatches) {
+        console.log(`✅ Found matching date row ${i}:`, row);
         
         // Check each task column for active tasks
         for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
@@ -69,11 +82,11 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
           const remarks = row[startCol + 5];
           
           const taskName = ALL_TASKS[taskIndex];
-          console.log(`Task ${taskName}: Portal=${portalName}, StartTime=${startTime}, ActualEndTime=${actualEndTime}`);
+          console.log(`🔍 Task ${taskName} (col ${startCol}): Portal="${portalName}", StartTime="${startTime}", ActualEndTime="${actualEndTime}"`);
           
           // If there's a start time but no actual end time, it's an active task
-          if (portalName && startTime && !actualEndTime) {
-            console.log(`Found active task: ${taskName} for ${employeeName}`);
+          if (portalName && startTime && (!actualEndTime || actualEndTime === '')) {
+            console.log(`🎯 Found active task: ${taskName} for ${employeeName}`);
             
             // Convert start time to full datetime (preserve original time)
             console.log(`Parsing start time: "${startTime}" with date: "${todayStr}"`);
