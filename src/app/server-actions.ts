@@ -1171,12 +1171,18 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
 
         // Process task if it has start time and item quantity (end time is optional)
         if (startTimeStr && itemQtyStr && dateStr) {
+           console.log(`✓ ${taskName} has required fields, parsing...`);
            try {
               const baseDate = parse(dateStr, 'dd/MM/yyyy', new Date());
               const startTime = parse(startTimeStr, 'hh:mm a', baseDate);
               const quantity = parseInt(itemQtyStr, 10) || 0;
 
+              console.log(`  Parsed: baseDate=${baseDate}, startTime=${startTime}, quantity=${quantity}`);
+              console.log(`  Valid: startTime=${!isNaN(startTime.getTime())}, quantity>0=${quantity > 0}`);
+
               if (!isNaN(startTime.getTime()) && quantity > 0) {
+                  console.log(`  ✓ Adding ${taskName} to report`);
+
                   let duration = 0;
                   let actualEndTime = endTimeStr;
                   
@@ -1229,13 +1235,19 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
                     duration: duration,
                     runRate: duration > 0 ? duration / quantity : 0
                   });
+              } else {
+                console.log(`  ✗ Skipping ${taskName}: invalid time or quantity`);
               }
            } catch(e) {
               console.error(`Could not parse time for ${employeeName}, task ${taskName}:`, e);
            }
+        } else {
+          console.log(`  ✗ ${taskName} missing required fields`);
         }
       }
     }
+    
+    console.log(`Final report for ${employeeName}: ${employeeData.detailedRecords.length} records, ${employeeData.totalItems} items`);
 
     // Calculate run rates
     for (const taskName in employeeData.tasks) {
