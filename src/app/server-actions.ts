@@ -581,10 +581,33 @@ async function updateTaskEndTime(activeTask: ActiveTask, endTime: string, finalR
     
     console.log(`Updating columns: endTime=${getColumnName(endTimeColIndex)}, finalRemarks=${getColumnName(finalRemarksColIndex)}`);
     
+    // Parse the datetime-local string properly to avoid timezone issues
+    // endTime comes as "2025-11-07T07:29" format from datetime-local input
+    const endTimeDate = new Date(endTime);
+    
+    // Extract hours and minutes directly from the input string to avoid timezone conversion
+    const timeMatch = endTime.match(/T(\d{2}):(\d{2})/);
+    let formattedEndTime: string;
+    
+    if (timeMatch) {
+      const hours = parseInt(timeMatch[1]);
+      const minutes = parseInt(timeMatch[2]);
+      
+      // Convert to 12-hour format with AM/PM
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+      formattedEndTime = `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    } else {
+      // Fallback to date formatting if regex fails
+      formattedEndTime = format(endTimeDate, 'hh:mm a');
+    }
+    
+    console.log(`End time input: "${endTime}", formatted: "${formattedEndTime}"`);
+    
     const updates = [
       {
         range: `${sheetName}!${getColumnName(endTimeColIndex)}${targetRowIndex + 1}`,
-        values: [[format(new Date(endTime), 'hh:mm a')]]
+        values: [[formattedEndTime]]
       }
     ];
     
