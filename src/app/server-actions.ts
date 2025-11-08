@@ -997,15 +997,25 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
     console.log('Spreadsheet ID:', spreadsheetId);
     
-    // Ensure dates are Date objects
+    // Ensure dates are Date objects and handle timezone properly
     let startDate = new Date(dateRange.from);
     let endDate = new Date(dateRange.to);
     
-    console.log('📅 Original dates:', { from: dateRange.from, to: dateRange.to });
+    console.log('📅 Received dates (ISO):', { from: dateRange.from, to: dateRange.to });
+    console.log('📅 Parsed as Date objects:', { start: startDate.toString(), end: endDate.toString() });
     
-    // Set to noon to avoid timezone issues when comparing dates
-    startDate.setHours(12, 0, 0, 0);
-    endDate.setHours(12, 0, 0, 0);
+    // Get the date components in local timezone
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth();
+    const startDay = startDate.getDate();
+    
+    const endYear = endDate.getFullYear();
+    const endMonth = endDate.getMonth();
+    const endDay = endDate.getDate();
+    
+    // Create new dates at noon local time to avoid timezone issues
+    startDate = new Date(startYear, startMonth, startDay, 12, 0, 0, 0);
+    endDate = new Date(endYear, endMonth, endDay, 12, 0, 0, 0);
     
     const interval = { start: startDate, end: endDate };
     console.log(`🔍 Searching for dates: ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);

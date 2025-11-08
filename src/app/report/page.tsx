@@ -41,10 +41,22 @@ export default function ReportPage() {
   function generateReport() {
     if (date?.from) {
       setLoading(true);
-      const reportDateRange = { ...date, to: date.to ?? date.from };
+      
+      // Fix timezone issue - ensure dates are in local timezone
+      const fromDate = new Date(date.from);
+      const toDate = date.to ? new Date(date.to) : new Date(date.from);
+      
+      // Set to noon local time to avoid timezone conversion issues
+      fromDate.setHours(12, 0, 0, 0);
+      toDate.setHours(12, 0, 0, 0);
+      
+      const reportDateRange = { from: fromDate, to: toDate };
+      
+      console.log('🔄 Generating report for dates:', format(fromDate, 'dd/MM/yyyy'), 'to', format(toDate, 'dd/MM/yyyy'));
+      
       // Add timestamp to force fresh data fetch
       setReportParams({ date: reportDateRange, employee: selectedEmployee, timestamp: Date.now() });
-      console.log('🔄 Generating fresh report at', new Date().toISOString());
+      
       // The actual data fetching will be handled by the child components.
       // We can turn off the main loader after a short delay.
       setTimeout(() => setLoading(false), 500);
