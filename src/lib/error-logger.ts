@@ -92,9 +92,12 @@ class ErrorLogger {
   }
 
   /**
-   * Persist logs to localStorage
+   * Persist logs to localStorage (client-side only)
    */
   private persistLog(log: ErrorLog) {
+    // Only persist on client-side
+    if (typeof window === 'undefined') return;
+    
     try {
       const key = 'app_error_logs';
       const stored = localStorage.getItem(key);
@@ -122,9 +125,11 @@ class ErrorLogger {
   }
 
   /**
-   * Get logs from localStorage
+   * Get logs from localStorage (client-side only)
    */
   getPersistedLogs(): ErrorLog[] {
+    if (typeof window === 'undefined') return [];
+    
     try {
       const stored = localStorage.getItem('app_error_logs');
       return stored ? JSON.parse(stored) : [];
@@ -138,6 +143,9 @@ class ErrorLogger {
    */
   clearLogs() {
     this.logs = [];
+    
+    if (typeof window === 'undefined') return;
+    
     try {
       localStorage.removeItem('app_error_logs');
     } catch (e) {
