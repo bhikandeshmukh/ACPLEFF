@@ -148,9 +148,9 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
             console.log(`Returning active task:`, activeTask);
             
             // Cache the active task for 5 seconds
-            const { dataCache, DataCache } = await import('@/lib/data-cache');
-            const cacheKey = DataCache.activeTaskKey(employeeName);
-            dataCache.set(cacheKey, activeTask, 5000);
+            const { dataCache: cache1, DataCache: DC1 } = await import('@/lib/data-cache');
+            const cacheKey1 = DC1.activeTaskKey(employeeName);
+            cache1.set(cacheKey1, activeTask, 5000);
             
             return activeTask;
         }
@@ -160,9 +160,9 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`No active/pending task found for ${employeeName} (checked all dates)`);
     
     // Cache the null result for 5 seconds
-    const { dataCache, DataCache } = await import('@/lib/data-cache');
-    const cacheKey = DataCache.activeTaskKey(employeeName);
-    dataCache.set(cacheKey, null, 5000);
+    const { dataCache: cache2, DataCache: DC2 } = await import('@/lib/data-cache');
+    const cacheKey2 = DC2.activeTaskKey(employeeName);
+    cache2.set(cacheKey2, null, 5000);
     
     return null;
   } catch (error) {
