@@ -28,8 +28,9 @@ import {
 } from '@/components/ui/table';
 import { getEmployeeReport, type EmployeeReport, type TaskRecord } from '@/app/server-actions';
 import { generateEmployeePDF, downloadPDF } from '@/lib/pdf-utils';
+import { generateEmployeeExcel, downloadExcel } from '@/lib/excel-utils';
 import { format } from 'date-fns';
-import { Download } from 'lucide-react';
+import { Download, FileSpreadsheet } from 'lucide-react';
 
 type EmployeeReportCardProps = {
   employeeName: string;
@@ -55,6 +56,7 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   useEffect(() => {
     async function fetchReport() {
@@ -96,6 +98,21 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
       console.error('Error generating PDF:', error);
     } finally {
       setDownloadingPDF(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!reportData) return;
+    
+    setDownloadingExcel(true);
+    try {
+      const workbook = generateEmployeeExcel(reportData, dateRange);
+      const filename = `${employeeName}_Report_${format(dateRange.from, 'dd-MM-yyyy')}_to_${format(dateRange.to, 'dd-MM-yyyy')}.xlsx`;
+      downloadExcel(workbook, filename);
+    } catch (error) {
+      console.error('Error generating Excel:', error);
+    } finally {
+      setDownloadingExcel(false);
     }
   };
 
@@ -154,18 +171,32 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
               Work Time: {formatDuration(reportData.totalWorkTime)}
             </span>
           </div>
-          <button
-            onClick={handleDownloadPDF}
-            disabled={downloadingPDF}
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {downloadingPDF ? (
-              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-            ) : (
-              <Download className="h-3 w-3 mr-1" />
-            )}
-            PDF
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPDF}
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {downloadingPDF ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <Download className="h-3 w-3 mr-1" />
+              )}
+              PDF
+            </button>
+            <button
+              onClick={handleDownloadExcel}
+              disabled={downloadingExcel}
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-medium bg-green-600 text-white hover:bg-green-700 h-9 px-3 disabled:pointer-events-none disabled:opacity-50"
+            >
+              {downloadingExcel ? (
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+              ) : (
+                <FileSpreadsheet className="h-3 w-3 mr-1" />
+              )}
+              Excel
+            </button>
+          </div>
         </div>
         <AccordionTrigger className="px-4 pb-2 text-sm font-medium hover:no-underline">
           <span>View Details</span>

@@ -29,7 +29,8 @@ import { employees } from '@/lib/config';
 import { EmployeeReportCard } from '@/components/employee-report-card';
 import { getEmployeeReport, type EmployeeReport } from '@/app/server-actions';
 import { generateAllEmployeesPDF, downloadPDF } from '@/lib/pdf-utils';
-import { Download } from 'lucide-react';
+import { generateAllEmployeesExcel, downloadExcel } from '@/lib/excel-utils';
+import { Download, FileSpreadsheet } from 'lucide-react';
 
 export default function ReportPage() {
   const [date, setDate] = useState<DateRange | undefined>();
@@ -37,6 +38,7 @@ export default function ReportPage() {
   const [reportParams, setReportParams] = useState<{date: DateRange, employee: string, timestamp: number} | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloadingAllPDF, setDownloadingAllPDF] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
 
   function generateReport() {
     if (date?.from) {
@@ -105,6 +107,47 @@ export default function ReportPage() {
       console.error('Error generating PDF:', error);
     } finally {
       setDownloadingAllPDF(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!reportParams?.date.from) return;
+    
+    setDownloadingExcel(true);
+    try {
+      const allEmployeesData: EmployeeReport[] = [];
+      
+      // Fetch data for all employees
+      for (const employeeName of employeesToShow) {
+        const employeeData = await getEmployeeReport(reportParams.date as { from: Date; to: Date }, employeeName);
+        if (employeeData) {
+          allEmployeesData.push(employeeData);
+        } else {
+          // Create empty report for employees with no data
+          const emptyReport: EmployeeReport = {
+            name: employeeName,
+            totalWorkTime: 0,
+            totalItems: 0,
+            averageRunRate: 0,
+            tasks: {},
+            detailedRecords: []
+          };
+          allEmployeesData.push(emptyReport);
+        }
+      }
+      
+      // Generate Excel
+      const workbook = generateAllEmployeesExcel(allEmployeesData, reportParams.date as { from: Date; to: Date });
+      const fromDate = format(reportParams.date.from, 'dd-MM-yyyy');
+      const toDate = format(reportParams.date.to || reportParams.date.from, 'dd-MM-yyyy');
+      const filename = selectedEmployee === 'All' 
+        ? `All_Employees_Report_${fromDate}_to_${toDate}.xlsx`
+        : `${selectedEmployee}_Report_${fromDate}_to_${toDate}.xlsx`;
+      downloadExcel(workbook, filename);
+    } catch (error) {
+      console.error('Error generating Excel:', error);
+    } finally {
+      setDownloadingExcel(false);
     }
   };
 
@@ -207,18 +250,32 @@ export default function ReportPage() {
                     View Report
                   </button>
                   {reportParams && (
-                    <button
-                      onClick={handleDownloadAllPDF} 
-                      disabled={downloadingAllPDF || !reportParams?.date.from}
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50"
-                    >
-                      {downloadingAllPDF ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Download className="mr-2 h-4 w-4" />
-                      )}
-                      Download PDF
-                    </button>
+                    <>
+                      <button
+                        onClick={handleDownloadAllPDF} 
+                        disabled={downloadingAllPDF || !reportParams?.date.from}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {downloadingAllPDF ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        PDF
+                      </button>
+                      <button
+                        onClick={handleDownloadExcel} 
+                        disabled={downloadingExcel || !reportParams?.date.from}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium bg-green-600 text-white hover:bg-green-700 h-10 px-4 transition-colors disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        {downloadingExcel ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                        )}
+                        Excel
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
