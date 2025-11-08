@@ -13,6 +13,17 @@ const TASK_COLUMN_WIDTH = 8; // B to I is 8 columns
 async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTask | null> {
   try {
     console.log(`🔍 DEBUGGING: Checking active task for employee: "${employeeName}"`);
+    
+    // Check cache first (5 second TTL for active tasks)
+    const { dataCache, DataCache } = await import('@/lib/data-cache');
+    const cacheKey = DataCache.activeTaskKey(employeeName);
+    const cached = dataCache.get<ActiveTask | null>(cacheKey);
+    
+    if (cached !== null) {
+      console.log(`✅ Cache hit for active task: ${employeeName}`);
+      return cached;
+    }
+    
     const sheets = await getSheetsClient();
     const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
     
@@ -135,15 +146,36 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
             };
             
             console.log(`Returning active task:`, activeTask);
+            
+            // Cache the active task for 5 seconds
+            const { dataCache, DataCache } = await import('@/lib/data-cache');
+            const cacheKey = DataCache.activeTaskKey(employeeName);
+            dataCache.set(cacheKey, activeTask, 5000);
+            
             return activeTask;
         }
       }
     }
     
     console.log(`No active/pending task found for ${employeeName} (checked all dates)`);
+    
+    // Cache the null result for 5 seconds
+    const { dataCache, DataCache } = await import('@/lib/data-cache');
+    const cacheKey = DataCache.activeTaskKey(employeeName);
+    dataCache.set(cacheKey, null, 5000);
+    
     return null;
   } catch (error) {
     console.error(`Error checking active task for ${employeeName}:`, error);
+    
+    // Log error
+    const { errorLogger } = await import('@/lib/error-logger');
+    errorLogger.error(
+      `Failed to check active task for ${employeeName}`,
+      error,
+      'checkActiveTaskFromSheets'
+    );
+    
     return null;
   }
 }

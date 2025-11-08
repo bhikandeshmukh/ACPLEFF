@@ -469,17 +469,20 @@ export function EnhancedTrackerForm() {
 
         {/* Active Task Display */}
         {activeTask && (() => {
-          // Calculate estimated end time (treat UTC as local time)
-          const startTimeUTC = new Date(activeTask.startTime);
-          // Create a new date with the same time but in local timezone
-          const startTime = new Date(
-            startTimeUTC.getUTCFullYear(),
-            startTimeUTC.getUTCMonth(),
-            startTimeUTC.getUTCDate(),
-            startTimeUTC.getUTCHours(),
-            startTimeUTC.getUTCMinutes(),
-            startTimeUTC.getUTCSeconds()
-          );
+          // Calculate estimated end time (proper timezone handling)
+          const startTimeISO = new Date(activeTask.startTime);
+          
+          // Extract date components to avoid timezone conversion
+          const year = startTimeISO.getUTCFullYear();
+          const month = startTimeISO.getUTCMonth();
+          const day = startTimeISO.getUTCDate();
+          const hours = startTimeISO.getUTCHours();
+          const minutes = startTimeISO.getUTCMinutes();
+          const seconds = startTimeISO.getUTCSeconds();
+          
+          // Create date in local timezone with same values
+          const startTime = new Date(year, month, day, hours, minutes, seconds);
+          
           const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
           const totalDurationSeconds = activeTask.itemQty > 0 
             ? activeTask.itemQty * durationPerItem 

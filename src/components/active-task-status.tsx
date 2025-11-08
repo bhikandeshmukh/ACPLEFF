@@ -103,16 +103,20 @@ export function ActiveTaskStatus() {
           {selectedEmployee && !loading && (
             <div className="p-3 sm:p-4 rounded-lg border bg-card">
               {activeTask ? (() => {
-                // Calculate estimated end time and late status (fix timezone)
-                const startTimeUTC = new Date(activeTask.startTime);
-                const startTime = new Date(
-                  startTimeUTC.getUTCFullYear(),
-                  startTimeUTC.getUTCMonth(),
-                  startTimeUTC.getUTCDate(),
-                  startTimeUTC.getUTCHours(),
-                  startTimeUTC.getUTCMinutes(),
-                  startTimeUTC.getUTCSeconds()
-                );
+                // Calculate estimated end time and late status (proper timezone handling)
+                const startTimeISO = new Date(activeTask.startTime);
+                
+                // Extract date components to avoid timezone conversion
+                const year = startTimeISO.getUTCFullYear();
+                const month = startTimeISO.getUTCMonth();
+                const day = startTimeISO.getUTCDate();
+                const hours = startTimeISO.getUTCHours();
+                const minutes = startTimeISO.getUTCMinutes();
+                const seconds = startTimeISO.getUTCSeconds();
+                
+                // Create date in local timezone with same values
+                const startTime = new Date(year, month, day, hours, minutes, seconds);
+                
                 const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
                 const totalDurationSeconds = activeTask.itemQty > 0 
                   ? activeTask.itemQty * durationPerItem 
