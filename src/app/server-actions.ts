@@ -1225,6 +1225,31 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     
     console.log(`Final report for ${employeeName}: ${employeeData.detailedRecords.length} records, ${employeeData.totalItems} items`);
 
+    // Sort detailed records by date and start time (ascending order)
+    employeeData.detailedRecords.sort((a, b) => {
+      try {
+        // Parse dates
+        const dateA = parse(a.date, 'dd/MM/yyyy', new Date());
+        const dateB = parse(b.date, 'dd/MM/yyyy', new Date());
+        
+        // Compare dates first
+        if (dateA.getTime() !== dateB.getTime()) {
+          return dateA.getTime() - dateB.getTime();
+        }
+        
+        // If dates are same, compare start times
+        const timeA = parse(a.startTime, 'hh:mm a', dateA);
+        const timeB = parse(b.startTime, 'hh:mm a', dateB);
+        
+        return timeA.getTime() - timeB.getTime();
+      } catch (e) {
+        console.error('Error sorting records:', e);
+        return 0;
+      }
+    });
+    
+    console.log(`✅ Records sorted by date and start time (ascending)`);
+
     // Calculate run rates
     for (const taskName in employeeData.tasks) {
       const task = employeeData.tasks[taskName];
