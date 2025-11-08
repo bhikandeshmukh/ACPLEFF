@@ -31,12 +31,10 @@ import { getEmployeeReport, type EmployeeReport } from '@/app/server-actions';
 import { generateAllEmployeesPDF, downloadPDF } from '@/lib/pdf-utils';
 import { Download } from 'lucide-react';
 
-// Client component - no cache exports needed here
-
 export default function ReportPage() {
   const [date, setDate] = useState<DateRange | undefined>();
   const [selectedEmployee, setSelectedEmployee] = useState('All');
-  const [reportParams, setReportParams] = useState<{date: DateRange, employee: string} | null>(null);
+  const [reportParams, setReportParams] = useState<{date: DateRange, employee: string, timestamp: number} | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloadingAllPDF, setDownloadingAllPDF] = useState(false);
 
@@ -44,7 +42,9 @@ export default function ReportPage() {
     if (date?.from) {
       setLoading(true);
       const reportDateRange = { ...date, to: date.to ?? date.from };
-      setReportParams({ date: reportDateRange, employee: selectedEmployee });
+      // Add timestamp to force fresh data fetch
+      setReportParams({ date: reportDateRange, employee: selectedEmployee, timestamp: Date.now() });
+      console.log('🔄 Generating fresh report at', new Date().toISOString());
       // The actual data fetching will be handled by the child components.
       // We can turn off the main loader after a short delay.
       setTimeout(() => setLoading(false), 500);
@@ -228,7 +228,7 @@ export default function ReportPage() {
             <div className="w-full space-y-4">
               {reportParams.date.from && employeesToShow.map(employeeName => (
                 <EmployeeReportCard 
-                  key={employeeName}
+                  key={`${employeeName}-${reportParams.timestamp}`}
                   employeeName={employeeName}
                   dateRange={reportParams.date as { from: Date; to: Date; }}
                 />

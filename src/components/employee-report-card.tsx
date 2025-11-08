@@ -68,14 +68,13 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
       setReportData(null);
 
       try {
-        console.log(`Fetching report for ${employeeName} from ${from} to ${effectiveTo}`);
-        console.log(`Date objects - from:`, from, `to:`, effectiveTo);
-        console.log(`Date ISO strings - from:`, from.toISOString(), `to:`, effectiveTo.toISOString());
+        console.log(`🔄 Fetching LIVE report for ${employeeName} from ${format(from, 'dd/MM/yyyy')} to ${format(effectiveTo, 'dd/MM/yyyy')}`);
+        console.log(`⏰ Fetch timestamp:`, new Date().toISOString());
         const data = await getEmployeeReport({ from, to: effectiveTo }, employeeName);
-        console.log(`Report data for ${employeeName}:`, data);
+        console.log(`✅ Report data received for ${employeeName}:`, data ? `${data.detailedRecords.length} records` : 'No data');
         setReportData(data);
       } catch (err: any) {
-        console.error(`Failed to fetch report for ${employeeName}:`, err);
+        console.error(`❌ Failed to fetch report for ${employeeName}:`, err);
         setError('Could not load report data.');
       } finally {
         setLoading(false);

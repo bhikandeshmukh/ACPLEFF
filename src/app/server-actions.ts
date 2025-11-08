@@ -34,7 +34,8 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
     console.log(`Checking for any active/pending tasks (any date)`);
     
     // Get sheet data (force fresh data, no cache)
-    console.log(`🔍 Fetching data from sheet: "${employeeName}" at ${new Date().toISOString()}`);
+    const timestamp = Date.now();
+    console.log(`🔍 Fetching LIVE data from sheet: "${employeeName}" at ${new Date().toISOString()} (cache-bust: ${timestamp})`);
     const getSheetResponse = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${employeeName}!A1:ZZ1000`,
@@ -42,7 +43,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
       valueRenderOption: 'UNFORMATTED_VALUE',
       dateTimeRenderOption: 'FORMATTED_STRING'
     });
-    console.log(`🔍 Successfully fetched data from "${employeeName}" sheet`);
+    console.log(`✅ Successfully fetched LIVE data from "${employeeName}" sheet`);
     
     const rows = getSheetResponse.data.values || [];
     
@@ -161,7 +162,19 @@ async function getSheetsClient() {
     credentials,
     scopes: ["https://www.googleapis.com/auth/spreadsheets"],
   });
-  return google.sheets({ version: "v4", auth });
+  
+  // Create sheets client with cache-busting headers
+  const sheets = google.sheets({ 
+    version: "v4", 
+    auth,
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    }
+  });
+  
+  return sheets;
 }
 
 // Helper to get sheetId from sheetName, required for merge requests
@@ -963,9 +976,10 @@ type DateRange = {
 }
 
 export async function getEmployeeReport(dateRange: DateRange, employeeName: string): Promise<EmployeeReport | null> {
-  console.log('=== Starting getEmployeeReport (no cache, fresh Google Sheets data) ===');
+  console.log('=== Starting getEmployeeReport (LIVE - NO CACHE) ===');
   console.log('Employee:', employeeName);
   console.log('Date range:', dateRange);
+  console.log('Timestamp:', new Date().toISOString());
   
   // Check if environment variables are available
   const requiredEnvVars = ['GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL', 'GOOGLE_SHEET_ID'];
@@ -983,41 +997,18 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     const spreadsheetId = process.env.GOOGLE_SHEET_ID || "1Y8M1BvMnNN0LxHCoHKTcd3oVBWncWa46JuE8okLEOfg";
     console.log('Spreadsheet ID:', spreadsheetId);
     
-    // Ensure dates are Date objects and adjust for full day coverage
+    // Ensure dates are Date objects
     let startDate = new Date(dateRange.from);
     let endDate = new Date(dateRange.to);
     
-    console.log('Original dates:', { from: dateRange.from, to: dateRange.to });
-    console.log('Parsed dates before adjustment:', { start: startDate, end: endDate });
+    console.log('📅 Original dates:', { from: dateRange.from, to: dateRange.to });
     
-    // Simple fix: If the date seems off by timezone, try adjusting
-    // Check if we're getting dates that are off by IST offset (5.5 hours = 19800000 ms)
-    const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
-    
-    // If the date looks like it's from the previous day due to timezone, adjust it
-    const today = new Date();
-    const todayIST = new Date(today.getTime() + istOffset);
-    
-    console.log('Current date (IST):', format(todayIST, 'dd/MM/yyyy'));
-    console.log('Search dates before adjustment:', format(startDate, 'dd/MM/yyyy'), 'to', format(endDate, 'dd/MM/yyyy'));
-    
-    // If the search date is significantly different from today, try adjusting
-    const daysDiff = Math.abs(todayIST.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-    if (daysDiff > 1) {
-      startDate = new Date(startDate.getTime() + istOffset);
-      endDate = new Date(endDate.getTime() + istOffset);
-      console.log('Applied IST adjustment');
-    }
-    
-    console.log('Timezone adjusted dates:', { start: startDate, end: endDate });
-    
-    // Set start to beginning of day and end to end of day to avoid timezone issues
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    // Set to noon to avoid timezone issues when comparing dates
+    startDate.setHours(12, 0, 0, 0);
+    endDate.setHours(12, 0, 0, 0);
     
     const interval = { start: startDate, end: endDate };
-    console.log(`Adjusted date range for ${employeeName}: ${interval.start} to ${interval.end}`);
-    console.log(`Looking for dates between: ${format(startDate, 'dd/MM/yyyy')} and ${format(endDate, 'dd/MM/yyyy')}`);
+    console.log(`🔍 Searching for dates: ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);
 
   try {
     console.log(`Fetching data for sheet: ${employeeName}`);
@@ -1034,6 +1025,10 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     
     let getSheetResponse;
     try {
+      // Add cache-busting parameter to force fresh data
+      const timestamp = Date.now();
+      console.log(`🔄 Fetching LIVE data from Google Sheets (cache-bust: ${timestamp})`);
+      
       getSheetResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `${employeeName}!A1:ZZ1000`,
@@ -1042,7 +1037,7 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
         valueRenderOption: 'UNFORMATTED_VALUE',
         dateTimeRenderOption: 'FORMATTED_STRING'
       });
-      console.log('Successfully fetched sheet data');
+      console.log('✅ Successfully fetched LIVE sheet data at', new Date().toISOString());
     } catch (apiError: any) {
       console.error('Google Sheets API error:', apiError.message);
       return null;
@@ -1064,25 +1059,17 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
     const dateMatchingRows = rows.filter((row, index) => {
         if (index < 2 || !row[0]) return false;
         try {
-            // Try multiple date formats
-            let rowDate;
             const dateStr = row[0].toString().trim();
             
-            // Try dd/MM/yyyy format first
+            // Parse date in dd/MM/yyyy format (as stored in Google Sheets)
+            let rowDate;
             try {
                 rowDate = parse(dateStr, 'dd/MM/yyyy', new Date());
-                // Ensure the parsed date is in local timezone
-                rowDate.setHours(12, 0, 0, 0); // Set to noon to avoid timezone issues
+                // Set to noon to avoid timezone issues
+                rowDate.setHours(12, 0, 0, 0);
             } catch {
-                // Try MM/dd/yyyy format
-                try {
-                    rowDate = parse(dateStr, 'MM/dd/yyyy', new Date());
-                    rowDate.setHours(12, 0, 0, 0);
-                } catch {
-                    // Try other common formats
-                    rowDate = new Date(dateStr);
-                    rowDate.setHours(12, 0, 0, 0);
-                }
+                console.log(`Failed to parse date: ${dateStr}`);
+                return false;
             }
             
             if (isNaN(rowDate.getTime())) {
@@ -1090,24 +1077,18 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
                 return false;
             }
             
-            // More flexible date comparison - check if dates match by day
+            // Simple date comparison using yyyy-MM-dd format
             const rowDateStr = format(rowDate, 'yyyy-MM-dd');
             const startDateStr = format(interval.start, 'yyyy-MM-dd');
             const endDateStr = format(interval.end, 'yyyy-MM-dd');
             
-            // Also try direct date string comparison from sheet format
-            const sheetDateForComparison = format(rowDate, 'dd/MM/yyyy');
-            const searchStartDate = format(interval.start, 'dd/MM/yyyy');
-            const searchEndDate = format(interval.end, 'dd/MM/yyyy');
-            
             const isInRange = rowDateStr >= startDateStr && rowDateStr <= endDateStr;
-            const isDirectMatch = dateStr === searchStartDate || dateStr === searchEndDate || 
-                                 (dateStr >= searchStartDate && dateStr <= searchEndDate);
             
-            const finalMatch = isInRange || isDirectMatch;
+            if (isInRange) {
+                console.log(`✅ Row ${index}: ${dateStr} matches range (${startDateStr} to ${endDateStr})`);
+            }
             
-            console.log(`Row ${index}: ${dateStr} -> ${rowDate.toISOString()} -> Date: ${rowDateStr} -> In range: ${isInRange} -> Direct match: ${isDirectMatch} -> Final: ${finalMatch}`);
-            return finalMatch;
+            return isInRange;
         } catch (e) {
             console.log(`Failed to parse date: ${row[0]}`, e);
             return false;
@@ -1116,7 +1097,7 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
 
     console.log(`Found ${dateMatchingRows.length} matching rows for ${employeeName}`);
     if (dateMatchingRows.length === 0) {
-        console.log(`No matching rows for date range ${interval.start} to ${interval.end}`);
+        console.log(`⚠️ No matching rows for date range ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);
         
         // Show available dates for debugging
         const availableDates = rows.slice(2).map(row => row[0]).filter(date => date).map(date => {
@@ -1127,25 +1108,10 @@ export async function getEmployeeReport(dateRange: DateRange, employeeName: stri
             return date;
           }
         });
-        console.log(`Available dates in sheet: [${availableDates.join(', ')}]`);
-        console.log(`You searched for: ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);
+        console.log(`📅 Available dates in sheet: [${availableDates.join(', ')}]`);
+        console.log(`🔍 You searched for: ${format(startDate, 'dd/MM/yyyy')} to ${format(endDate, 'dd/MM/yyyy')}`);
         
-        // Fallback: If no matches found, try matching today's date in IST
-        const todayIST = format(new Date(Date.now() + (5.5 * 60 * 60 * 1000)), 'dd/MM/yyyy');
-        console.log(`Trying fallback with today's IST date: ${todayIST}`);
-        
-        const fallbackRows = rows.filter((row, index) => {
-          if (index < 2 || !row[0]) return false;
-          return row[0].toString().trim() === todayIST;
-        });
-        
-        if (fallbackRows.length > 0) {
-          console.log(`Found ${fallbackRows.length} rows using fallback date matching`);
-          // Use fallback rows instead
-          dateMatchingRows.push(...fallbackRows);
-        } else {
-          return null;
-        }
+        return null;
     }
     
     const employeeData: EmployeeReport = {
