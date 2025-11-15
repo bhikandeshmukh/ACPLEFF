@@ -590,8 +590,8 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
 
           // For OTHER WORK, quantity can be 0, but for other tasks it must be > 0
           if (taskName !== "OTHER WORK" && quantity <= 0) continue;
-          // For OTHER WORK, allow 0 quantity
-          if (taskName === "OTHER WORK" && !itemQtyStr) continue;
+          // For OTHER WORK, always include regardless of quantity (time-based calculation)
+          // No need to skip OTHER WORK tasks based on quantity
 
           const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
           if (!startTimeMatch) continue;
@@ -627,11 +627,17 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
 
               if (endTimeStr) {
                 employeeData.totalWorkTime += duration;
-                employeeData.totalItems += quantity;
+                
+                // For OTHER WORK, don't add to totalItems since quantity is 0/optional
+                if (taskName !== "OTHER WORK") {
+                  employeeData.totalItems += quantity;
+                }
 
                 if (!employeeData.tasks[taskName]) {
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
                 }
+                
+                // For OTHER WORK, track duration but keep quantity as is (0 or blank)
                 employeeData.tasks[taskName].quantity += quantity;
                 employeeData.tasks[taskName].duration += duration;
               }
@@ -650,7 +656,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
             ganesh: row[startCol + 6] || '',
             finalRemarks: row[startCol + 7] || '',
             duration,
-            runRate: (duration > 0 && quantity > 0) ? duration / quantity : 0
+            runRate: taskName === "OTHER WORK" ? duration : ((duration > 0 && quantity > 0) ? duration / quantity : 0)
           });
         } catch (error) {
           errorLogger.warning(`Error processing record for ${taskName}`, error, 'getEmployeeReport');
@@ -662,7 +668,14 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     // Calculate run rates
     for (const taskName in employeeData.tasks) {
       const task = employeeData.tasks[taskName];
-      task.runRate = task.quantity > 0 ? task.duration / task.quantity : 0;
+      
+      if (taskName === "OTHER WORK") {
+        // For OTHER WORK, run rate is just the total duration (time-based)
+        task.runRate = task.duration;
+      } else {
+        // For other tasks, run rate is duration per item
+        task.runRate = task.quantity > 0 ? task.duration / task.quantity : 0;
+      }
     }
 
     employeeData.averageRunRate = employeeData.totalItems > 0 ? employeeData.totalWorkTime / employeeData.totalItems : 0;
