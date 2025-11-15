@@ -626,15 +626,16 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
               if (duration < 0) duration += 24 * 60 * 60;
 
               if (endTimeStr) {
-                employeeData.totalWorkTime += duration;
-                
-                // For OTHER WORK, only add to totalItems if quantity > 0
+                // Only add to totalWorkTime if task has items OR if it's OTHER WORK with quantity > 0
                 if (taskName !== "OTHER WORK") {
+                  employeeData.totalWorkTime += duration;
                   employeeData.totalItems += quantity;
                 } else if (taskName === "OTHER WORK" && quantity > 0) {
-                  // OTHER WORK with quantity > 0 should be counted in totalItems
+                  // OTHER WORK with quantity > 0 should be counted in both totalWorkTime and totalItems
+                  employeeData.totalWorkTime += duration;
                   employeeData.totalItems += quantity;
                 }
+                // OTHER WORK with quantity <= 0 is not added to totalWorkTime or totalItems
 
                 if (!employeeData.tasks[taskName]) {
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
