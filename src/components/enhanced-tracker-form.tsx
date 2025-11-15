@@ -398,10 +398,71 @@ export function EnhancedTrackerForm() {
     }
   }
 
-  // Set current time for start/end time fields
+  // Business hours validation and auto-correction
+  const validateAndCorrectTime = (inputTime: string): string => {
+    if (!inputTime) return inputTime;
+    
+    const date = new Date(inputTime);
+    const hours = date.getHours();
+    
+    // Business hours: 7 AM (07:00) to 9 PM (21:00)
+    const BUSINESS_START = 7;  // 7 AM
+    const BUSINESS_END = 21;   // 9 PM
+    
+    let correctedDate = new Date(date);
+    let wasAdjusted = false;
+    let adjustmentMessage = "";
+    
+    // Auto-correct time based on rules
+    if (hours >= 0 && hours < BUSINESS_START) {
+      // Night time (12 AM - 6:59 AM) -> Convert to PM equivalent
+      if (hours === 0) {
+        correctedDate.setHours(12); // 12 AM -> 12 PM
+        adjustmentMessage = "12 AM converted to 12 PM (business hours)";
+      } else if (hours >= 1 && hours <= 8) {
+        correctedDate.setHours(hours + 12); // 1-8 AM -> 1-8 PM
+        adjustmentMessage = `${hours} AM converted to ${hours} PM (business hours)`;
+      }
+      wasAdjusted = true;
+    } else if (hours > BUSINESS_END) {
+      // After 9 PM -> Convert to next day morning equivalent
+      if (hours === 22) {
+        correctedDate.setHours(10); // 10 PM -> 10 AM
+        adjustmentMessage = "10 PM converted to 10 AM (business hours)";
+      } else if (hours === 23) {
+        correctedDate.setHours(11); // 11 PM -> 11 AM  
+        adjustmentMessage = "11 PM converted to 11 AM (business hours)";
+      }
+      wasAdjusted = true;
+    }
+    
+    // Show notification if time was adjusted
+    if (wasAdjusted) {
+      toast({
+        title: "⏰ Time Auto-Corrected",
+        description: adjustmentMessage,
+        variant: "default",
+      });
+    }
+    
+    // Return corrected datetime-local string
+    const year = correctedDate.getFullYear();
+    const month = String(correctedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(correctedDate.getDate()).padStart(2, '0');
+    const correctedHours = String(correctedDate.getHours()).padStart(2, '0');
+    const minutes = String(correctedDate.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${correctedHours}:${minutes}`;
+  };
+
+  // Set current time for start/end time fields with business hours validation
   const setCurrentTimeField = (field: "startTime" | "endTime") => {
     const now = new Date();
-    const datetimeLocalString = getCurrentDatetimeLocal(); // Use datetime-local format for input
+    let datetimeLocalString = getCurrentDatetimeLocal(); // Use datetime-local format for input
+    
+    // Apply business hours validation
+    datetimeLocalString = validateAndCorrectTime(datetimeLocalString);
+    
     if (field === "startTime") {
       setStartValue("startTime", datetimeLocalString);
     } else {
@@ -626,7 +687,9 @@ export function EnhancedTrackerForm() {
                               const day = String(date.getDate()).padStart(2, '0');
                               const hours = String(date.getHours()).padStart(2, '0');
                               const minutes = String(date.getMinutes()).padStart(2, '0');
-                              field.onChange(`${year}-${month}-${day}T${hours}:${minutes}`);
+                              const timeString = `${year}-${month}-${day}T${hours}:${minutes}`;
+                              const correctedTime = validateAndCorrectTime(timeString);
+                              field.onChange(correctedTime);
                             } else {
                               field.onChange("");
                             }
@@ -647,6 +710,9 @@ export function EnhancedTrackerForm() {
                           Set Current Time
                         </Button>
                       </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ⏰ Business hours: 7:00 AM - 9:00 PM. Times outside this range will be auto-corrected.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -864,6 +930,10 @@ export function EnhancedTrackerForm() {
                             className="pl-10 h-12 text-base"
                             type="datetime-local"
                             {...field}
+                            onChange={(e) => {
+                              const correctedTime = validateAndCorrectTime(e.target.value);
+                              field.onChange(correctedTime);
+                            }}
                             disabled={isStarting}
                             style={{
                               WebkitAppearance: 'none',
@@ -883,6 +953,9 @@ export function EnhancedTrackerForm() {
                         Now
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ⏰ Business hours: 7:00 AM - 9:00 PM. Times outside this range will be auto-corrected.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
