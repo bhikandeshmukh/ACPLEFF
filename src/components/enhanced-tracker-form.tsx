@@ -286,23 +286,23 @@ export function EnhancedTrackerForm() {
 
       const response = await startTask(data);
       if (response.success) {
+        // Show success message
         toast({
           title: "✅ Task Started Successfully!",
-          description: (response as any).message || "Your task is now active and tracking.",
+          description: "Refreshing page to show end task option...",
           variant: "default",
         });
         
         // Use the verified activeTask from the response
         const newActiveTask = (response as any).activeTask;
-        setActiveTask(newActiveTask);
         
-        // Save to localStorage
+        // Save to localStorage immediately
         if (newActiveTask) {
           localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(newActiveTask));
         }
         
-        // Reset form without page reload
-        startForm.reset();
+        // Refresh page immediately without any delay
+        window.location.reload();
         
       } else {
         toast({
@@ -310,6 +310,7 @@ export function EnhancedTrackerForm() {
           description: response.error || "Could not create task. Please try again.",
           variant: "destructive",
         });
+        setIsStartingTask(false);
       }
     } catch (error) {
       console.error("Error starting task:", error);
@@ -318,10 +319,9 @@ export function EnhancedTrackerForm() {
         description: "Connection failed. Please check your internet and try again.",
         variant: "destructive",
       });
-    } finally {
-      // Always clear loading state
       setIsStartingTask(false);
     }
+    // Note: No finally block needed since page will refresh on success
   }
 
   async function onEndTask(data: EndTaskRecord) {
