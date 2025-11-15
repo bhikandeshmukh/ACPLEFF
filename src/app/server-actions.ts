@@ -258,13 +258,19 @@ export async function startTask(data: StartTaskRecord) {
       existingRowData = [];
     }
 
-    // Calculate estimated end time
+    // Calculate estimated end time (only for non-OTHER WORK tasks)
     const startTime = new Date(validatedFields.data.startTime);
-    const durationPerItem = TASK_DURATIONS_SECONDS[validatedFields.data.taskName] || DEFAULT_DURATION_SECONDS;
-    const durationInSeconds = validatedFields.data.itemQty > 0
-      ? validatedFields.data.itemQty * durationPerItem
-      : DEFAULT_DURATION_SECONDS;
-    const estimatedEndTime = addSeconds(startTime, durationInSeconds);
+    let estimatedEndTimeStr = '';
+    
+    if (validatedFields.data.taskName !== "OTHER WORK") {
+      const durationPerItem = TASK_DURATIONS_SECONDS[validatedFields.data.taskName] || DEFAULT_DURATION_SECONDS;
+      const durationInSeconds = validatedFields.data.itemQty > 0
+        ? validatedFields.data.itemQty * durationPerItem
+        : DEFAULT_DURATION_SECONDS;
+      const estimatedEndTime = addSeconds(startTime, durationInSeconds);
+      estimatedEndTimeStr = isoToLocalTimeString(estimatedEndTime.toISOString());
+    }
+    // OTHER WORK tasks don't get estimated end time
 
     // Prepare task data
     const firstCellData = validatedFields.data.taskName === "OTHER WORK"
@@ -275,7 +281,7 @@ export async function startTask(data: StartTaskRecord) {
       escapeForSheets(firstCellData),
       validatedFields.data.itemQty,
       isoToLocalTimeString(validatedFields.data.startTime),
-      isoToLocalTimeString(estimatedEndTime.toISOString()),
+      estimatedEndTimeStr, // Empty for OTHER WORK
       '',
       escapeForSheets(validatedFields.data.remarks || ''),
       '',

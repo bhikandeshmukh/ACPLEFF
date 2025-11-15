@@ -563,7 +563,7 @@ export function EnhancedTrackerForm() {
 
         {/* Active Task Display */}
         {activeTask && (() => {
-          // Calculate estimated end time (proper timezone handling)
+          // Extract start time (proper timezone handling)
           const startTimeISO = new Date(activeTask.startTime);
           
           // Extract date components to avoid timezone conversion
@@ -577,16 +577,23 @@ export function EnhancedTrackerForm() {
           // Create date in local timezone with same values
           const startTime = new Date(year, month, day, hours, minutes, seconds);
           
-          const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
-          const totalDurationSeconds = activeTask.itemQty > 0 
-            ? activeTask.itemQty * durationPerItem 
-            : DEFAULT_DURATION_SECONDS;
-          const estimatedEndTime = addSeconds(startTime, totalDurationSeconds);
+          // Calculate estimated end time and late status (only for non-OTHER WORK tasks)
+          let estimatedEndTime: Date | null = null;
+          let isLate = false;
+          let minutesLate = 0;
           
-          // Check if task is late (using real-time current time)
-          const isLate = currentTime > estimatedEndTime;
-          const timeDifference = Math.abs(currentTime.getTime() - estimatedEndTime.getTime());
-          const minutesLate = Math.floor(timeDifference / (1000 * 60));
+          if (activeTask.taskName !== "OTHER WORK") {
+            const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
+            const totalDurationSeconds = activeTask.itemQty > 0 
+              ? activeTask.itemQty * durationPerItem 
+              : DEFAULT_DURATION_SECONDS;
+            estimatedEndTime = addSeconds(startTime, totalDurationSeconds);
+            
+            // Check if task is late (using real-time current time)
+            isLate = currentTime > estimatedEndTime;
+            const timeDifference = Math.abs(currentTime.getTime() - estimatedEndTime.getTime());
+            minutesLate = Math.floor(timeDifference / (1000 * 60));
+          }
           
           return (
             <Card className={`mb-4 sm:mb-6 ${isLate ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
@@ -621,37 +628,54 @@ export function EnhancedTrackerForm() {
                     <span className="font-medium">Started:</span> 
                     <span className="sm:block">{format(startTime, "hh:mm a")}</span>
                   </div>
-                  <div className="flex justify-between sm:block">
-                    <span className="font-medium">Est. End:</span> 
-                    <span className={`sm:block ${isLate ? 'text-red-600 font-medium' : ''}`}>
-                      {format(estimatedEndTime, "hh:mm a")}
-                    </span>
-                  </div>
-                  <div className="flex justify-between sm:block">
-                    <span className="font-medium">Status:</span> 
-                    <span className={`sm:block font-medium ${isLate ? 'text-red-600' : 'text-green-600'}`}>
-                      {isLate ? `${minutesLate}m Late` : 'On Time'}
-                    </span>
-                  </div>
+                  {/* Only show estimated end time for non-OTHER WORK tasks */}
+                  {activeTask.taskName !== "OTHER WORK" && estimatedEndTime && (
+                    <div className="flex justify-between sm:block">
+                      <span className="font-medium">Est. End:</span> 
+                      <span className={`sm:block ${isLate ? 'text-red-600 font-medium' : ''}`}>
+                        {format(estimatedEndTime, "hh:mm a")}
+                      </span>
+                    </div>
+                  )}
+                  {/* Only show status for non-OTHER WORK tasks */}
+                  {activeTask.taskName !== "OTHER WORK" && (
+                    <div className="flex justify-between sm:block">
+                      <span className="font-medium">Status:</span> 
+                      <span className={`sm:block font-medium ${isLate ? 'text-red-600' : 'text-green-600'}`}>
+                        {isLate ? `${minutesLate}m Late` : 'On Time'}
+                      </span>
+                    </div>
+                  )}
+                  {/* For OTHER WORK, show different status */}
+                  {activeTask.taskName === "OTHER WORK" && (
+                    <div className="flex justify-between sm:block">
+                      <span className="font-medium">Status:</span> 
+                      <span className="sm:block font-medium text-blue-600">
+                        In Progress
+                      </span>
+                    </div>
+                  )}
                 </div>
                 
-                {/* Progress indicator */}
-                <div className="mt-3 sm:mt-4">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>Progress</span>
-                    <span>{isLate ? 'Overdue' : 'In Progress'}</span>
+                {/* Progress indicator - only for non-OTHER WORK tasks */}
+                {activeTask.taskName !== "OTHER WORK" && estimatedEndTime && (
+                  <div className="mt-3 sm:mt-4">
+                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                      <span>Progress</span>
+                      <span>{isLate ? 'Overdue' : 'In Progress'}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full transition-all duration-300 ${
+                          isLate ? 'bg-red-500' : 'bg-blue-500'
+                        }`}
+                        style={{
+                          width: isLate ? '100%' : `${Math.min(100, (Math.abs(currentTime.getTime() - estimatedEndTime.getTime()) / ((activeTask.itemQty > 0 ? activeTask.itemQty * (TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS) : DEFAULT_DURATION_SECONDS) * 1000)) * 100)}%`
+                        }}
+                      ></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all duration-300 ${
-                        isLate ? 'bg-red-500' : 'bg-blue-500'
-                      }`}
-                      style={{
-                        width: isLate ? '100%' : `${Math.min(100, (timeDifference / (totalDurationSeconds * 1000)) * 100)}%`
-                      }}
-                    ></div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           );
