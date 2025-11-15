@@ -279,24 +279,17 @@ export function EnhancedTrackerForm() {
           variant: "default",
         });
         
-        // Use the verified activeTask from the response (already checked against Google Sheets)
+        // Use the verified activeTask from the response
         const newActiveTask = (response as any).activeTask;
-        console.log("✅ Setting active task from verified response:", newActiveTask);
         setActiveTask(newActiveTask);
         
-        // Also save to localStorage for immediate availability
+        // Save to localStorage
         if (newActiveTask) {
           localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(newActiveTask));
-          console.log("📱 Saved new active task to localStorage immediately");
         }
         
+        // Reset form without page reload
         startForm.reset();
-        
-        // Refresh page after task start to show End Task form
-        setTimeout(() => {
-          console.log("🔄 Refreshing page to show End Task form...");
-          window.location.reload();
-        }, 1000); // 1 second delay to show success message
         
       } else {
         toast({
@@ -316,12 +309,8 @@ export function EnhancedTrackerForm() {
   }
 
   async function onEndTask(data: EndTaskRecord) {
-    console.log("🔴 End Task button clicked!", data);
-    console.log("🔴 Current active task:", activeTask);
-    
     try {
       const response = await endTask(data);
-      console.log("🔴 End task response:", response);
       
       if (response.success) {
         toast({
@@ -333,22 +322,29 @@ export function EnhancedTrackerForm() {
         // Clear active task immediately (both state and localStorage)
         setActiveTask(null);
         localStorage.removeItem(ACTIVE_TASK_KEY);
-        console.log("📱 Cleared active task from localStorage immediately");
         
-        // Refresh active task from Google Sheets to ensure no stale data
-        if (selectedEmployee) {
-          const freshActiveTask = await getActiveTask(selectedEmployee);
-          setActiveTask(freshActiveTask);
-          if (freshActiveTask) {
-            localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(freshActiveTask));
-          }
-        }
-        
+        // Reset forms and employee selection
         endForm.reset();
+        startForm.reset();
         setSelectedEmployee("");
         localStorage.removeItem(SELECTED_EMPLOYEE_KEY);
+        
+        // Wait a moment for Google Sheets to update, then verify task is closed
+        setTimeout(async () => {
+          if (selectedEmployee) {
+            const freshActiveTask = await getActiveTask(selectedEmployee);
+            if (!freshActiveTask) {
+              // Task successfully closed
+              setActiveTask(null);
+              localStorage.removeItem(ACTIVE_TASK_KEY);
+            } else {
+              // Task still exists, show it
+              setActiveTask(freshActiveTask);
+              localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(freshActiveTask));
+            }
+          }
+        }, 1000); // Wait 1 second for Google Sheets to update
       } else {
-        console.error("🔴 End task failed:", response.error);
         toast({
           title: "Error",
           description: response.error,
@@ -356,7 +352,7 @@ export function EnhancedTrackerForm() {
         });
       }
     } catch (error) {
-      console.error("🔴 End task exception:", error);
+      console.error("End task error:", error);
       toast({
         title: "Error",
         description: "Failed to end task. Please try again.",

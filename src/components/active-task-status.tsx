@@ -103,25 +103,14 @@ export function ActiveTaskStatus() {
           {selectedEmployee && !loading && (
             <div className="p-3 sm:p-4 rounded-lg border bg-card">
               {activeTask ? (() => {
-                // Calculate estimated end time and late status (proper timezone handling)
-                const startTimeISO = new Date(activeTask.startTime);
-                
-                // Extract date components to avoid timezone conversion
-                const year = startTimeISO.getUTCFullYear();
-                const month = startTimeISO.getUTCMonth();
-                const day = startTimeISO.getUTCDate();
-                const hours = startTimeISO.getUTCHours();
-                const minutes = startTimeISO.getUTCMinutes();
-                const seconds = startTimeISO.getUTCSeconds();
-                
-                // Create date in local timezone with same values
-                const startTime = new Date(year, month, day, hours, minutes, seconds);
+                // Proper timezone handling - convert ISO to local time
+                const startTimeDate = new Date(activeTask.startTime);
                 
                 const durationPerItem = TASK_DURATIONS_SECONDS[activeTask.taskName] || DEFAULT_DURATION_SECONDS;
                 const totalDurationSeconds = activeTask.itemQty > 0 
                   ? activeTask.itemQty * durationPerItem 
                   : DEFAULT_DURATION_SECONDS;
-                const estimatedEndTime = addSeconds(startTime, totalDurationSeconds);
+                const estimatedEndTime = addSeconds(startTimeDate, totalDurationSeconds);
                 
                 // Use real-time current time
                 const isLate = currentTime > estimatedEndTime;
@@ -162,7 +151,7 @@ export function ActiveTaskStatus() {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="font-medium text-muted-foreground">Started:</span>
-                            <span className="font-medium">{format(startTime, "hh:mm a")}</span>
+                            <span className="font-medium">{format(startTimeDate, "hh:mm a")}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="font-medium text-muted-foreground">Est. End:</span>

@@ -4,6 +4,7 @@
  */
 
 import { errorLogger } from './error-logger';
+import { API_CONFIG } from './config';
 
 export interface CacheEntry<T> {
   data: T;
@@ -13,7 +14,28 @@ export interface CacheEntry<T> {
 
 class DataCache {
   private cache: Map<string, CacheEntry<any>> = new Map();
-  private readonly DEFAULT_TTL = 30000; // 30 seconds default
+  private readonly DEFAULT_TTL = API_CONFIG.REPORT_CACHE_TTL;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // Start cleanup interval only on server-side
+    if (typeof window === 'undefined') {
+      this.startCleanupInterval();
+    }
+  }
+
+  /**
+   * Start automatic cleanup interval
+   */
+  private startCleanupInterval(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 60000); // Every minute
+  }
 
   /**
    * Set cache entry
@@ -37,20 +59,21 @@ class DataCache {
 
   /**
    * Get cache entry
+   * Returns undefined if not found or expired (distinguishes from null data)
    */
-  get<T>(key: string): T | null {
+  get<T>(key: string): T | undefined {
     const entry = this.cache.get(key);
 
     if (!entry) {
       errorLogger.info(`Cache miss: ${key}`, 'DataCache');
-      return null;
+      return undefined;
     }
 
     const now = Date.now();
     if (now > entry.expiresAt) {
       this.cache.delete(key);
       errorLogger.info(`Cache expired: ${key}`, 'DataCache');
-      return null;
+      return undefined;
     }
 
     errorLogger.info(
@@ -157,6 +180,17 @@ class DataCache {
   }
 
   /**
+   * Destroy cache and cleanup intervals
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.clear();
+  }
+
+  /**
    * Generate cache key for employee data
    */
   static employeeKey(employeeName: string): string {
@@ -183,10 +217,3 @@ export const dataCache = new DataCache();
 
 // Export class for static methods
 export { DataCache };
-
-// Cleanup expired entries every minute
-if (typeof window !== 'undefined') {
-  setInterval(() => {
-    dataCache.cleanup();
-  }, 60000);
-}
