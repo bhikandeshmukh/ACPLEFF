@@ -1,17 +1,7 @@
 import type { Employee } from "@/lib/definitions";
 
 // Validate required environment variables (server-side only)
-if (typeof window === 'undefined') {
-  const requiredEnvVars = ['GOOGLE_PROJECT_ID', 'GOOGLE_PRIVATE_KEY', 'GOOGLE_CLIENT_EMAIL'];
-  const missingEnvVars = requiredEnvVars.filter(envVar => {
-    const env = process as any;
-    return !env.env?.[envVar];
-  });
-
-  if (missingEnvVars.length > 0) {
-    console.warn(`⚠️ Missing environment variables: ${missingEnvVars.join(', ')}`);
-  }
-}
+// This validation is moved to server-actions.ts to avoid client-side process access
 
 // Configuration for task durations per item
 export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
@@ -54,21 +44,23 @@ export const employees: Employee[] = [
   { id: "8", name: "NIRBHAY" }
 ];
 
-// Get spreadsheet ID from environment, with validation
-export const GOOGLE_SHEET_ID = (() => {
+// Get spreadsheet ID from environment (server-side only)
+// This will be used only in server-actions.ts
+export const getGoogleSheetId = (): string => {
   if (typeof window !== 'undefined') {
-    // Client-side: return placeholder, actual value from server
-    const env = process as any;
-    return env.env?.NEXT_PUBLIC_GOOGLE_SHEET_ID || '';
+    // Client-side: should not be called
+    throw new Error('GOOGLE_SHEET_ID should only be accessed on server-side');
   }
   // Server-side: get from environment
-  const env = process as any;
-  const id = env.env?.GOOGLE_SHEET_ID;
+  const id = process.env.GOOGLE_SHEET_ID;
   if (!id) {
     throw new Error('GOOGLE_SHEET_ID environment variable is not set');
   }
   return id;
-})();
+};
+
+// For backward compatibility, export a placeholder
+export const GOOGLE_SHEET_ID = '';
 
 // API configuration
 export const API_CONFIG = {

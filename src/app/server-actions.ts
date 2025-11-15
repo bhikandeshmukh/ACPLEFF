@@ -3,7 +3,7 @@
 import { google, sheets_v4 } from "googleapis";
 import { format, addSeconds, parse, differenceInSeconds } from "date-fns";
 import { EmployeeRecordSchema, StartTaskSchema, EndTaskSchema, type EmployeeRecord, type StartTaskRecord, type EndTaskRecord, type ActiveTask } from "@/lib/definitions";
-import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS, GOOGLE_SHEET_ID, API_CONFIG } from "@/lib/config";
+import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS, getGoogleSheetId, API_CONFIG } from "@/lib/config";
 import { dataCache, DataCache } from "@/lib/data-cache";
 import { errorLogger } from "@/lib/error-logger";
 import { executeWithRetry, RequestDeduplicator } from "@/lib/request-utils";
@@ -81,7 +81,8 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
         const sanitizedName = sanitizeSheetName(employeeName);
 
         // Check if sheet exists
-        const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEET_ID });
+        const spreadsheetId = getGoogleSheetId();
+        const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
         const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === sanitizedName);
 
         if (!sheetExists) {
@@ -92,7 +93,7 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
         // Fetch sheet data with retry
         const getSheetResponse = await executeWithRetry(
           () => sheets.spreadsheets.values.get({
-            spreadsheetId: GOOGLE_SHEET_ID,
+            spreadsheetId,
             range: `${sanitizedName}!${API_CONFIG.SHEET_FETCH_RANGE}`,
             majorDimension: 'ROWS',
             valueRenderOption: 'UNFORMATTED_VALUE',
@@ -207,12 +208,13 @@ export async function startTask(data: StartTaskRecord) {
     const sanitizedName = sanitizeSheetName(employeeName);
 
     // Check if sheet exists, create if not
-    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEET_ID });
+    const spreadsheetId = getGoogleSheetId();
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
     const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === sanitizedName);
 
     if (!sheetExists) {
       await sheets.spreadsheets.batchUpdate({
-        spreadsheetId: GOOGLE_SHEET_ID,
+        spreadsheetId,
         requestBody: {
           requests: [{ addSheet: { properties: { title: sanitizedName } } }]
         }
@@ -221,7 +223,7 @@ export async function startTask(data: StartTaskRecord) {
 
     // Get sheet data
     const getSheetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEET_ID,
+      spreadsheetId: getGoogleSheetId(),
       range: `${sanitizedName}!${API_CONFIG.SHEET_FETCH_RANGE}`
     });
 
@@ -297,7 +299,7 @@ export async function startTask(data: StartTaskRecord) {
     // Write to sheet with retry
     await executeWithRetry(
       () => sheets.spreadsheets.values.update({
-        spreadsheetId: GOOGLE_SHEET_ID,
+        spreadsheetId,
         range: `${sanitizedName}!A${targetRowIndex + 1}`,
         valueInputOption: 'USER_ENTERED',
         requestBody: { values: [finalRow] }
@@ -361,10 +363,11 @@ export async function endTask(data: EndTaskRecord) {
 
     const sheets = await getSheetsClient();
     const sanitizedName = sanitizeSheetName(employeeName);
+    const spreadsheetId = getGoogleSheetId();
 
     // Get sheet data
     const getSheetResponse = await sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_SHEET_ID,
+      spreadsheetId,
       range: `${sanitizedName}!${API_CONFIG.SHEET_FETCH_RANGE}`
     });
 
@@ -410,7 +413,7 @@ export async function endTask(data: EndTaskRecord) {
     // Update sheet with retry
     await executeWithRetry(
       () => sheets.spreadsheets.values.batchUpdate({
-        spreadsheetId: GOOGLE_SHEET_ID,
+        spreadsheetId,
         requestBody: {
           valueInputOption: 'USER_ENTERED',
           data: [
@@ -489,6 +492,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
 
     const sheets = await getSheetsClient();
     const sanitizedName = sanitizeSheetName(employeeName);
+    const spreadsheetId = getGoogleSheetId();
 
     // Parse dates
     let startDate = new Date(dateRange.from);
@@ -504,7 +508,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 12, 0, 0, 0);
 
     // Check if sheet exists
-    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId: GOOGLE_SHEET_ID });
+    const spreadsheetInfo = await sheets.spreadsheets.get({ spreadsheetId });
     const sheetExists = spreadsheetInfo.data.sheets?.some(s => s.properties?.title === sanitizedName);
 
     if (!sheetExists) {
@@ -514,7 +518,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     // Fetch sheet data with retry
     const getSheetResponse = await executeWithRetry(
       () => sheets.spreadsheets.values.get({
-        spreadsheetId: GOOGLE_SHEET_ID,
+        spreadsheetId,
         range: `${sanitizedName}!${API_CONFIG.SHEET_FETCH_RANGE}`,
         majorDimension: 'ROWS',
         valueRenderOption: 'UNFORMATTED_VALUE',
