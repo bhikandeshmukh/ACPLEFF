@@ -480,7 +480,8 @@ export type TaskRecord = {
 
 export type EmployeeReport = {
   name: string;
-  totalWorkTime: number;
+  totalWorkTime: number; // All work time including OTHER WORK
+  productiveWorkTime: number; // Only time from tasks with items (for average calculation)
   totalItems: number;
   averageRunRate: number;
   tasks: {
@@ -566,6 +567,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     const employeeData: EmployeeReport = {
       name: employeeName,
       totalWorkTime: 0,
+      productiveWorkTime: 0,
       totalItems: 0,
       averageRunRate: 0,
       tasks: {},
@@ -626,16 +628,19 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
               if (duration < 0) duration += 24 * 60 * 60;
 
               if (endTimeStr) {
-                // Only add to totalWorkTime if task has items OR if it's OTHER WORK with quantity > 0
+                // Always add to totalWorkTime (includes all work including OTHER WORK)
+                employeeData.totalWorkTime += duration;
+                
+                // Add to productiveWorkTime and totalItems only for tasks with items
                 if (taskName !== "OTHER WORK") {
-                  employeeData.totalWorkTime += duration;
+                  employeeData.productiveWorkTime += duration;
                   employeeData.totalItems += quantity;
                 } else if (taskName === "OTHER WORK" && quantity > 0) {
-                  // OTHER WORK with quantity > 0 should be counted in both totalWorkTime and totalItems
-                  employeeData.totalWorkTime += duration;
+                  // OTHER WORK with quantity > 0 counts as productive work
+                  employeeData.productiveWorkTime += duration;
                   employeeData.totalItems += quantity;
                 }
-                // OTHER WORK with quantity <= 0 is not added to totalWorkTime or totalItems
+                // OTHER WORK with quantity <= 0 only adds to totalWorkTime, not productiveWorkTime
 
                 if (!employeeData.tasks[taskName]) {
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
@@ -690,7 +695,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       }
     }
 
-    employeeData.averageRunRate = employeeData.totalItems > 0 ? employeeData.totalWorkTime / employeeData.totalItems : 0;
+    employeeData.averageRunRate = employeeData.totalItems > 0 ? employeeData.productiveWorkTime / employeeData.totalItems : 0;
 
     return employeeData.detailedRecords.length > 0 ? employeeData : null;
   } catch (error) {
