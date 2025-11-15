@@ -628,8 +628,11 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
               if (endTimeStr) {
                 employeeData.totalWorkTime += duration;
                 
-                // For OTHER WORK, don't add to totalItems since quantity is 0/optional
+                // For OTHER WORK, only add to totalItems if quantity > 0
                 if (taskName !== "OTHER WORK") {
+                  employeeData.totalItems += quantity;
+                } else if (taskName === "OTHER WORK" && quantity > 0) {
+                  // OTHER WORK with quantity > 0 should be counted in totalItems
                   employeeData.totalItems += quantity;
                 }
 
@@ -656,7 +659,9 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
             ganesh: row[startCol + 6] || '',
             finalRemarks: row[startCol + 7] || '',
             duration,
-            runRate: taskName === "OTHER WORK" ? duration : ((duration > 0 && quantity > 0) ? duration / quantity : 0)
+            runRate: taskName === "OTHER WORK" ? 
+              (quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration) : 
+              ((duration > 0 && quantity > 0) ? duration / quantity : 0)
           });
         } catch (error) {
           errorLogger.warning(`Error processing record for ${taskName}`, error, 'getEmployeeReport');
@@ -670,8 +675,12 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       const task = employeeData.tasks[taskName];
       
       if (taskName === "OTHER WORK") {
-        // For OTHER WORK, run rate is just the total duration (time-based)
-        task.runRate = task.duration;
+        // For OTHER WORK: if quantity > 0, calculate per item; if quantity = 0, use total duration
+        if (task.quantity > 0) {
+          task.runRate = task.duration / task.quantity;
+        } else {
+          task.runRate = task.duration; // Time-based for 0 quantity
+        }
       } else {
         // For other tasks, run rate is duration per item
         task.runRate = task.quantity > 0 ? task.duration / task.quantity : 0;
