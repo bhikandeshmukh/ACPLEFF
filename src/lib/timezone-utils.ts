@@ -168,6 +168,34 @@ export function getCurrentDatetimeLocal(): string {
 }
 
 /**
+ * Convert ISO string to datetime-local format for HTML input
+ * Input: "2025-11-15T05:00:25.372Z"
+ * Output: "2025-11-15T10:30" (local time)
+ */
+export function isoToDatetimeLocal(isoString: string): string {
+  try {
+    if (!isoString) return '';
+    
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      console.error(`Invalid ISO string for datetime-local: ${isoString}`);
+      return '';
+    }
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  } catch (error) {
+    console.error(`Error converting ISO to datetime-local: ${isoString}`, error);
+    return '';
+  }
+}
+
+/**
  * Format date as dd/MM/yyyy (for Google Sheets)
  */
 export function formatDateForSheet(date: Date): string {
