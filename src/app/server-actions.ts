@@ -8,7 +8,7 @@ import { dataCache, DataCache } from "@/lib/data-cache";
 import { errorLogger } from "@/lib/error-logger";
 import { executeWithRetry, RequestDeduplicator } from "@/lib/request-utils";
 import { sanitizeSheetName, validateEmployeeName, validateTaskName, validatePortalName, validateItemQty, validateISODateTime, validateTaskData, escapeForSheets } from "@/lib/validation-utils";
-import { isoToLocalTimeString, extractTimeFromISO, formatDateForSheet, parseDateFromSheet, getCurrentDatetimeLocal } from "@/lib/timezone-utils";
+import { isoToLocalTimeString, extractTimeFromISO, formatDateForSheet, parseDateFromSheet, getCurrentDatetimeLocal, datetimeLocalToISO } from "@/lib/timezone-utils";
 
 const TASK_COLUMN_WIDTH = 8;
 const requestDeduplicator = new RequestDeduplicator();
@@ -397,7 +397,16 @@ export async function endTask(data: EndTaskRecord) {
 
     // Format end time
     console.log(`📝 Raw end time received: "${validatedFields.data.endTime}"`);
-    const endTimeStr = extractTimeFromISO(validatedFields.data.endTime);
+    
+    // Convert datetime-local to ISO if needed, then extract time
+    let endTimeISO = validatedFields.data.endTime;
+    if (!endTimeISO.includes('Z') && !endTimeISO.match(/[+-]\d{2}:\d{2}$/)) {
+      // It's datetime-local format, convert to ISO
+      endTimeISO = datetimeLocalToISO(endTimeISO);
+      console.log(`📝 Converted to ISO: "${endTimeISO}"`);
+    }
+    
+    const endTimeStr = extractTimeFromISO(endTimeISO);
     console.log(`📝 Formatted end time: "${endTimeStr}"`);
     const endTimeColIndex = startColIndex + 4;
     const finalRemarksColIndex = startColIndex + 7;

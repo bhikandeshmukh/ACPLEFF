@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { addSeconds, format } from "date-fns";
+import { getCurrentDatetimeLocal } from "@/lib/timezone-utils";
 import {
   ClipboardList,
   Clock,
@@ -392,11 +393,11 @@ export function EnhancedTrackerForm() {
   // Set current time for start/end time fields
   const setCurrentTimeField = (field: "startTime" | "endTime") => {
     const now = new Date();
-    const isoString = now.toISOString(); // Use consistent ISO format
+    const datetimeLocalString = getCurrentDatetimeLocal(); // Use datetime-local format for input
     if (field === "startTime") {
-      setStartValue("startTime", isoString);
+      setStartValue("startTime", datetimeLocalString);
     } else {
-      setEndValue("endTime", isoString);
+      setEndValue("endTime", datetimeLocalString);
     }
   };
 
@@ -610,7 +611,17 @@ export function EnhancedTrackerForm() {
                         <SimpleMobileDateTime
                           date={field.value ? new Date(field.value) : undefined}
                           onDateChange={(date) => {
-                            field.onChange(date ? date.toISOString() : "")
+                            // Convert to datetime-local format for the input field
+                            if (date) {
+                              const year = date.getFullYear();
+                              const month = String(date.getMonth() + 1).padStart(2, '0');
+                              const day = String(date.getDate()).padStart(2, '0');
+                              const hours = String(date.getHours()).padStart(2, '0');
+                              const minutes = String(date.getMinutes()).padStart(2, '0');
+                              field.onChange(`${year}-${month}-${day}T${hours}:${minutes}`);
+                            } else {
+                              field.onChange("");
+                            }
                           }}
                           placeholder="Select end time"
                           disabled={isEnding}
