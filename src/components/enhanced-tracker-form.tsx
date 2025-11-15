@@ -279,16 +279,16 @@ export function EnhancedTrackerForm() {
     try {
       // Show immediate feedback
       toast({
-        title: "Starting Task...",
-        description: "Please wait while we create your task.",
+        title: "🚀 Starting Task...",
+        description: "Creating your new task in the system.",
         variant: "default",
       });
 
       const response = await startTask(data);
       if (response.success) {
         toast({
-          title: "Task Started!",
-          description: (response as any).message,
+          title: "✅ Task Started Successfully!",
+          description: (response as any).message || "Your task is now active and tracking.",
           variant: "default",
         });
         
@@ -306,16 +306,16 @@ export function EnhancedTrackerForm() {
         
       } else {
         toast({
-          title: "Error",
-          description: response.error,
+          title: "❌ Failed to Start Task",
+          description: response.error || "Could not create task. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Error starting task:", error);
       toast({
-        title: "Error",
-        description: "Failed to start task. Please try again.",
+        title: "❌ Network Error",
+        description: "Connection failed. Please check your internet and try again.",
         variant: "destructive",
       });
     } finally {
@@ -325,23 +325,25 @@ export function EnhancedTrackerForm() {
   }
 
   async function onEndTask(data: EndTaskRecord) {
-    // Set loading state immediately
+    // Set loading state immediately - no delays
     setIsEndingTask(true);
     
     try {
-      // Show immediate feedback
+      // Show immediate feedback with more prominent styling
       toast({
-        title: "Ending Task...",
-        description: "Please wait while we save your task completion.",
+        title: "⏳ Submitting Task...",
+        description: "Your task is being saved to the system.",
         variant: "default",
       });
 
+      // Submit data immediately without any delays
       const response = await endTask(data);
       
       if (response.success) {
+        // Show success immediately
         toast({
-          title: "Task Completed!",
-          description: (response as any).message,
+          title: "✅ Task Completed Successfully!",
+          description: (response as any).message || "Your task has been saved and completed.",
           variant: "default",
         });
         
@@ -349,43 +351,49 @@ export function EnhancedTrackerForm() {
         setActiveTask(null);
         localStorage.removeItem(ACTIVE_TASK_KEY);
         
-        // Reset forms and employee selection
+        // Reset forms and employee selection immediately
         endForm.reset();
         startForm.reset();
         setSelectedEmployee("");
         localStorage.removeItem(SELECTED_EMPLOYEE_KEY);
         
-        // Wait a moment for Google Sheets to update, then verify task is closed
+        // Optional: Verify in background without blocking UI
         setTimeout(async () => {
-          if (selectedEmployee) {
-            const freshActiveTask = await getActiveTask(selectedEmployee);
-            if (!freshActiveTask) {
-              // Task successfully closed
-              setActiveTask(null);
-              localStorage.removeItem(ACTIVE_TASK_KEY);
-            } else {
-              // Task still exists, show it
-              setActiveTask(freshActiveTask);
-              localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(freshActiveTask));
+          try {
+            if (selectedEmployee) {
+              const freshActiveTask = await getActiveTask(selectedEmployee);
+              if (freshActiveTask) {
+                // If task still exists, restore it silently
+                setActiveTask(freshActiveTask);
+                localStorage.setItem(ACTIVE_TASK_KEY, JSON.stringify(freshActiveTask));
+                toast({
+                  title: "⚠️ Task Status Updated",
+                  description: "Task completion is being processed. Please check again in a moment.",
+                  variant: "default",
+                });
+              }
             }
+          } catch (error) {
+            // Silent background check - don't show errors
+            console.log("Background verification failed:", error);
           }
-        }, 1000); // Wait 1 second for Google Sheets to update
+        }, 2000); // Background check after 2 seconds
       } else {
         toast({
-          title: "Error",
-          description: response.error,
+          title: "❌ Submission Failed",
+          description: response.error || "Failed to save task. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("End task error:", error);
       toast({
-        title: "Error",
-        description: "Failed to end task. Please try again.",
+        title: "❌ Network Error",
+        description: "Connection failed. Please check your internet and try again.",
         variant: "destructive",
       });
     } finally {
-      // Always clear loading state
+      // Always clear loading state immediately
       setIsEndingTask(false);
     }
   }
@@ -669,18 +677,22 @@ export function EnhancedTrackerForm() {
               <Button 
                 type="submit" 
                 size="lg"
-                className="w-full h-12 text-base font-medium touch-manipulation" 
+                className={`w-full h-14 text-lg font-semibold touch-manipulation transition-all duration-200 ${
+                  (isEnding || isEndingTask) 
+                    ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl'
+                }`}
                 disabled={isEnding || isEndingTask}
               >
                 {(isEnding || isEndingTask) ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Ending Task...
+                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                    Submitting Task...
                   </>
                 ) : (
                   <>
-                    <Square className="mr-2 h-4 w-4" />
-                    End Task
+                    <Square className="mr-3 h-5 w-5" />
+                    End Task Now
                   </>
                 )}
               </Button>
@@ -898,16 +910,25 @@ export function EnhancedTrackerForm() {
                 )}
               />
               
-              <Button type="submit" size="lg" className="w-full h-12 text-base font-medium touch-manipulation" disabled={isStarting || isStartingTask}>
+              <Button 
+                type="submit" 
+                size="lg" 
+                className={`w-full h-14 text-lg font-semibold touch-manipulation transition-all duration-200 ${
+                  (isStarting || isStartingTask) 
+                    ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                    : 'bg-green-600 hover:bg-green-700 text-white shadow-lg hover:shadow-xl'
+                }`}
+                disabled={isStarting || isStartingTask}
+              >
                 {(isStarting || isStartingTask) ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Starting Task...
+                    <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+                    Creating Task...
                   </>
                 ) : (
                   <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Start Task
+                    <Play className="mr-3 h-5 w-5" />
+                    Start New Task
                   </>
                 )}
               </Button>
