@@ -640,8 +640,10 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
                 }
                 
-                // For OTHER WORK, track duration but keep quantity as is (0 or blank)
-                employeeData.tasks[taskName].quantity += quantity;
+                // For OTHER WORK, only track quantity if > 0, always track duration
+                if (taskName !== "OTHER WORK" || quantity > 0) {
+                  employeeData.tasks[taskName].quantity += quantity;
+                }
                 employeeData.tasks[taskName].duration += duration;
               }
             }
