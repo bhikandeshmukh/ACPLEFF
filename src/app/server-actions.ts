@@ -700,9 +700,20 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     // Sort detailed records by date and start time (ascending order)
     employeeData.detailedRecords.sort((a, b) => {
       try {
-        // Parse dates
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
+        // Parse dates (format: DD/MM/YYYY)
+        const parseDateStr = (dateStr: string) => {
+          const parts = dateStr.split('/');
+          if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+          }
+          return new Date(dateStr);
+        };
+        
+        const dateA = parseDateStr(a.date);
+        const dateB = parseDateStr(b.date);
         
         // First sort by date
         if (dateA.getTime() !== dateB.getTime()) {
@@ -711,15 +722,21 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         
         // If same date, sort by start time
         const parseTime = (timeStr: string) => {
-          const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+          if (!timeStr) return 0;
+          
+          const match = timeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
           if (!match) return 0;
           
           let hours = parseInt(match[1], 10);
           const minutes = parseInt(match[2], 10);
           const ampm = match[3].toUpperCase();
           
-          if (ampm === 'PM' && hours !== 12) hours += 12;
-          else if (ampm === 'AM' && hours === 12) hours = 0;
+          // Convert to 24-hour format
+          if (ampm === 'PM' && hours !== 12) {
+            hours += 12;
+          } else if (ampm === 'AM' && hours === 12) {
+            hours = 0;
+          }
           
           return hours * 60 + minutes; // Convert to minutes for comparison
         };
@@ -729,7 +746,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         
         return timeA - timeB;
       } catch (error) {
-        console.error('Error sorting records:', error);
+        console.error('Error sorting records:', error, { a: a.date + ' ' + a.startTime, b: b.date + ' ' + b.startTime });
         return 0;
       }
     });
