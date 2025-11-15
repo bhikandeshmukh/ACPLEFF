@@ -55,6 +55,8 @@ export function EnhancedTrackerForm() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkingActiveTask, setCheckingActiveTask] = useState(false);
+  const [isEndingTask, setIsEndingTask] = useState(false);
+  const [isStartingTask, setIsStartingTask] = useState(false);
 
   // localStorage keys
   const ACTIVE_TASK_KEY = "tracker_active_task";
@@ -270,7 +272,17 @@ export function EnhancedTrackerForm() {
   }, [watchedStartTime, watchedTaskName, watchedItemQty, toast]);
 
   async function onStartTask(data: StartTaskRecord) {
+    // Set loading state immediately
+    setIsStartingTask(true);
+    
     try {
+      // Show immediate feedback
+      toast({
+        title: "Starting Task...",
+        description: "Please wait while we create your task.",
+        variant: "default",
+      });
+
       const response = await startTask(data);
       if (response.success) {
         toast({
@@ -305,11 +317,24 @@ export function EnhancedTrackerForm() {
         description: "Failed to start task. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // Always clear loading state
+      setIsStartingTask(false);
     }
   }
 
   async function onEndTask(data: EndTaskRecord) {
+    // Set loading state immediately
+    setIsEndingTask(true);
+    
     try {
+      // Show immediate feedback
+      toast({
+        title: "Ending Task...",
+        description: "Please wait while we save your task completion.",
+        variant: "default",
+      });
+
       const response = await endTask(data);
       
       if (response.success) {
@@ -358,17 +383,20 @@ export function EnhancedTrackerForm() {
         description: "Failed to end task. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // Always clear loading state
+      setIsEndingTask(false);
     }
   }
 
   // Set current time for start/end time fields
   const setCurrentTimeField = (field: "startTime" | "endTime") => {
     const now = new Date();
-    const timeString = format(now, "yyyy-MM-dd'T'HH:mm");
+    const isoString = now.toISOString(); // Use consistent ISO format
     if (field === "startTime") {
-      setStartValue("startTime", timeString);
+      setStartValue("startTime", isoString);
     } else {
-      setEndValue("endTime", timeString);
+      setEndValue("endTime", isoString);
     }
   };
 
@@ -631,10 +659,9 @@ export function EnhancedTrackerForm() {
                 type="submit" 
                 size="lg"
                 className="w-full h-12 text-base font-medium touch-manipulation" 
-                disabled={isEnding}
-                onClick={() => console.log("🔴 End Task button clicked directly!")}
+                disabled={isEnding || isEndingTask}
               >
-                {isEnding ? (
+                {(isEnding || isEndingTask) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Ending Task...
@@ -860,8 +887,8 @@ export function EnhancedTrackerForm() {
                 )}
               />
               
-              <Button type="submit" size="lg" className="w-full h-12 text-base font-medium touch-manipulation" disabled={isStarting}>
-                {isStarting ? (
+              <Button type="submit" size="lg" className="w-full h-12 text-base font-medium touch-manipulation" disabled={isStarting || isStartingTask}>
+                {(isStarting || isStartingTask) ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Starting Task...

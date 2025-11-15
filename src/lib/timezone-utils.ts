@@ -54,25 +54,54 @@ export function datetimeLocalToISO(datetimeLocalString: string): string {
 
 /**
  * Extract time from ISO string and format as 12-hour time
- * Handles timezone properly
+ * Handles timezone properly and supports both ISO and datetime-local formats
  */
 export function extractTimeFromISO(isoString: string): string {
   try {
-    const date = new Date(isoString);
+    if (!isoString) {
+      console.error('Empty ISO string provided');
+      return '';
+    }
+
+    console.log(`🕐 Processing time string: "${isoString}"`);
+    
+    let date: Date;
+    
+    // Handle different input formats
+    if (isoString.includes('Z') || isoString.match(/[+-]\d{2}:\d{2}$/)) {
+      // Full ISO string with timezone (e.g., "2024-11-15T10:30:00.000Z")
+      date = new Date(isoString);
+      console.log(`🕐 Parsed as ISO with timezone: ${date.toString()}`);
+    } else if (isoString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/)) {
+      // datetime-local format (e.g., "2024-11-15T10:30" or "2024-11-15T10:30:00")
+      // Treat as local time
+      date = new Date(isoString);
+      console.log(`🕐 Parsed as datetime-local: ${date.toString()}`);
+    } else {
+      // Try to parse as-is
+      date = new Date(isoString);
+      console.log(`🕐 Parsed as generic date: ${date.toString()}`);
+    }
+    
     if (isNaN(date.getTime())) {
-      console.error(`Invalid ISO string: ${isoString}`);
+      console.error(`Invalid date result from: ${isoString}`);
       return '';
     }
     
-    // Get local time components
+    // Get local time components (this automatically handles timezone conversion)
     const hours = date.getHours();
     const minutes = date.getMinutes();
+    
+    console.log(`🕐 Local time components: ${hours}:${minutes}`);
     
     // Convert to 12-hour format
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours === 0 ? 12 : (hours > 12 ? hours - 12 : hours);
     
-    return `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+    const result = `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
+    console.log(`🕐 Final formatted time: "${result}"`);
+    
+    return result;
   } catch (error) {
     console.error(`Error extracting time from ISO: ${isoString}`, error);
     return '';

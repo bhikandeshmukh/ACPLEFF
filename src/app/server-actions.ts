@@ -396,7 +396,9 @@ export async function endTask(data: EndTaskRecord) {
     }
 
     // Format end time
+    console.log(`📝 Raw end time received: "${validatedFields.data.endTime}"`);
     const endTimeStr = extractTimeFromISO(validatedFields.data.endTime);
+    console.log(`📝 Formatted end time: "${endTimeStr}"`);
     const endTimeColIndex = startColIndex + 4;
     const finalRemarksColIndex = startColIndex + 7;
 
