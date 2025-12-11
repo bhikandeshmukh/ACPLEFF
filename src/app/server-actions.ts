@@ -591,18 +591,50 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         const dateStr = row[0];
 
         if (!startTimeStr || !dateStr) continue;
+        
+        // Special handling for OTHER WORK - ensure it's always processed if it has start time
+        if (taskName === "OTHER WORK" && startTimeStr) {
+          console.log(`🔍 Processing OTHER WORK: Date=${dateStr}, Portal=${row[startCol] || 'N/A'}, Qty=${row[startCol + 1] || 0}, Start=${startTimeStr}, End=${row[startCol + 4] || 'N/A'}`);
+        }
 
         try {
           const baseDate = parseDateFromSheet(dateStr);
           const quantity = parseInt(itemQtyStr, 10) || 0;
 
           // For OTHER WORK, quantity can be 0, but for other tasks it must be > 0
-          if (taskName !== "OTHER WORK" && quantity <= 0) continue;
-          // For OTHER WORK, always include regardless of quantity (time-based calculation)
-          // IMPORTANT: OTHER WORK with 0 quantity should appear in reports (as per requirement)
+          // CRITICAL: OTHER WORK tasks should ALWAYS be included, even with 0 quantity
+          if (taskName !== "OTHER WORK" && quantity <= 0) {
+            continue; // Skip non-OTHER WORK tasks with 0 quantity
+          }
+          
+          // For OTHER WORK: Always process regardless of quantity (time-based calculation)
+          // This ensures OTHER WORK with 0 quantity appears in reports (as per requirement)
+          if (taskName === "OTHER WORK") {
+            console.log(`📝 OTHER WORK Processing: Date=${dateStr}, Qty=${quantity}, Start=${startTimeStr}, End=${endTimeStr || 'In Progress'}`);
+          }
 
           const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-          if (!startTimeMatch) continue;
+          if (!startTimeMatch) {
+            // For OTHER WORK, still add to detailed records even if time parsing fails
+            if (taskName === "OTHER WORK") {
+              console.log(`⚠️ OTHER WORK time parsing failed but adding to records: ${startTimeStr}`);
+              employeeData.detailedRecords.push({
+                date: dateStr,
+                taskName,
+                portal: row[startCol] || '',
+                quantity,
+                startTime: startTimeStr,
+                estimatedEndTime: row[startCol + 3] || '',
+                actualEndTime: row[startCol + 4] || "In Progress",
+                chetanRemarks: row[startCol + 5] || '',
+                ganesh: row[startCol + 6] || '',
+                finalRemarks: row[startCol + 7] || '',
+                duration: 0,
+                runRate: 0
+              });
+            }
+            continue;
+          }
 
           let hours = parseInt(startTimeMatch[1], 10);
           const minutes = parseInt(startTimeMatch[2], 10);
