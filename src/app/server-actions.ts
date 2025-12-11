@@ -753,20 +753,22 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       return null;
     }
 
-    // Read task names from Row 1 (header row) - dynamic task detection
+    // Read task names from Row 1 (header row) - dynamic task detection with column positions
     const headerRow = rows[0] || [];
-    const sheetTasks: string[] = [];
+    const sheetTasks: { name: string; startCol: number }[] = [];
     
     // Parse headers - task names are at columns B, J, R, etc. (every 8 columns starting from 1)
     for (let col = 1; col < headerRow.length; col += TASK_COLUMN_WIDTH) {
       const taskHeader = headerRow[col];
       if (taskHeader && typeof taskHeader === 'string' && taskHeader.trim()) {
-        sheetTasks.push(taskHeader.trim());
+        sheetTasks.push({ name: taskHeader.trim(), startCol: col });
       }
     }
     
-    // If no headers found, fall back to ALL_TASKS
-    const tasksToUse = sheetTasks.length > 0 ? sheetTasks : ALL_TASKS;
+    // If no headers found, fall back to ALL_TASKS with calculated positions
+    const tasksToUse = sheetTasks.length > 0 
+      ? sheetTasks 
+      : ALL_TASKS.map((name, idx) => ({ name, startCol: 1 + (idx * TASK_COLUMN_WIDTH) }));
 
     // Filter rows by date range
     const dateMatchingRows = rows.filter((row, index) => {
@@ -799,9 +801,9 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     };
 
     for (const row of dateMatchingRows) {
-      for (let i = 0; i < tasksToUse.length; i++) {
-        const taskName = tasksToUse[i];
-        const startCol = 1 + (i * TASK_COLUMN_WIDTH);
+      for (const taskInfo of tasksToUse) {
+        const taskName = taskInfo.name;
+        const startCol = taskInfo.startCol;
 
         const itemQtyStr = row[startCol + 1];
         const startTimeStr = row[startCol + 2];
