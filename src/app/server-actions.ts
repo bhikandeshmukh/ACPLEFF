@@ -555,8 +555,33 @@ export async function endTask(data: EndTaskRecord) {
     });
 
     const rows = getSheetResponse.data.values || [];
-    const taskIndex = ALL_TASKS.indexOf(activeTask.taskName);
-    const startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+    
+    // Find task column from sheet headers (Row 1) - DYNAMIC DETECTION
+    const headerRow1 = rows[0] || [];
+    let startColIndex = -1;
+    
+    // Search for task in headers
+    for (let col = 1; col < Math.min(headerRow1.length + TASK_COLUMN_WIDTH, 500); col += TASK_COLUMN_WIDTH) {
+      const headerValue = headerRow1[col];
+      if (headerValue && headerValue.toString().trim().toUpperCase() === activeTask.taskName.toUpperCase()) {
+        startColIndex = col;
+        break;
+      }
+    }
+    
+    // Fallback to ALL_TASKS if not found in headers
+    if (startColIndex === -1) {
+      const taskIndex = ALL_TASKS.indexOf(activeTask.taskName);
+      if (taskIndex !== -1) {
+        startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+      } else {
+        return {
+          success: false,
+          error: `Task "${activeTask.taskName}" column not found in sheet.`,
+        };
+      }
+    }
+    
     const submissionDateStr = formatDateForSheet(new Date(activeTask.startTime));
     const startTimeStr = isoToLocalTimeString(activeTask.startTime);
 
