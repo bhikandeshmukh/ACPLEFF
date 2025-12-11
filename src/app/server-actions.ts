@@ -551,6 +551,21 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       return null;
     }
 
+    // Read task names from Row 1 (header row) - dynamic task detection
+    const headerRow = rows[0] || [];
+    const sheetTasks: string[] = [];
+    
+    // Parse headers - task names are at columns B, J, R, etc. (every 8 columns starting from 1)
+    for (let col = 1; col < headerRow.length; col += TASK_COLUMN_WIDTH) {
+      const taskHeader = headerRow[col];
+      if (taskHeader && typeof taskHeader === 'string' && taskHeader.trim()) {
+        sheetTasks.push(taskHeader.trim());
+      }
+    }
+    
+    // If no headers found, fall back to ALL_TASKS
+    const tasksToUse = sheetTasks.length > 0 ? sheetTasks : ALL_TASKS;
+
     // Filter rows by date range
     const dateMatchingRows = rows.filter((row, index) => {
       if (index < 2 || !row[0]) return false;
@@ -582,17 +597,14 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     };
 
     for (const row of dateMatchingRows) {
-      for (let i = 0; i < ALL_TASKS.length; i++) {
-        const taskName = ALL_TASKS[i];
+      for (let i = 0; i < tasksToUse.length; i++) {
+        const taskName = tasksToUse[i];
         const startCol = 1 + (i * TASK_COLUMN_WIDTH);
 
         const itemQtyStr = row[startCol + 1];
         const startTimeStr = row[startCol + 2];
         const endTimeStr = row[startCol + 4];
         const dateStr = row[0];
-
-        // All tasks are processed as they are stored in the sheet
-        // No conversion or special handling - maximum transparency
 
         // Skip only if there's no start time - this is the ONLY condition to skip
         if (!startTimeStr || !dateStr) {
@@ -602,6 +614,11 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         try {
           const baseDate = parseDateFromSheet(dateStr);
           const quantity = parseInt(itemQtyStr, 10) || 0;
+          const portalValue = row[startCol] || '';
+          
+          // Task name is exactly as per Google Sheet column - no reclassification
+          // This ensures report matches Google Sheet structure exactly
+          const finalTaskName = taskName;
 
           // ALL tasks with start time are included - no quantity restrictions
           // This ensures maximum inclusivity in reports
@@ -611,8 +628,8 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
             // Still add to detailed records even if time parsing fails - for ALL tasks
             employeeData.detailedRecords.push({
               date: dateStr,
-              taskName,
-              portal: row[startCol] || '',
+              taskName: finalTaskName,
+              portal: portalValue,
               quantity,
               startTime: startTimeStr,
               estimatedEndTime: row[startCol + 3] || '',
@@ -660,34 +677,34 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
                 employeeData.totalWorkTime += duration;
                 
                 // Add to productiveWorkTime and totalItems only for tasks with items
-                if (taskName !== "OTHER WORK") {
+                if (finalTaskName !== "OTHER WORK") {
                   employeeData.productiveWorkTime += duration;
                   employeeData.totalItems += quantity;
-                } else if (taskName === "OTHER WORK" && quantity > 0) {
+                } else if (finalTaskName === "OTHER WORK" && quantity > 0) {
                   // OTHER WORK with quantity > 0 counts as productive work
                   employeeData.productiveWorkTime += duration;
                   employeeData.totalItems += quantity;
                 }
                 // OTHER WORK with quantity <= 0 only adds to totalWorkTime, not productiveWorkTime
 
-                if (!employeeData.tasks[taskName]) {
-                  employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
+                if (!employeeData.tasks[finalTaskName]) {
+                  employeeData.tasks[finalTaskName] = { quantity: 0, duration: 0, runRate: 0 };
                 }
                 
                 // ALL tasks: Track quantity and duration
                 // No special handling - every task with start time gets recorded
-                employeeData.tasks[taskName].quantity += quantity;
-                employeeData.tasks[taskName].duration += duration;
+                employeeData.tasks[finalTaskName].quantity += quantity;
+                employeeData.tasks[finalTaskName].duration += duration;
               }
             }
           }
 
           // Add ALL tasks to task summary even if no end time (in progress)
           if (!endTimeStr) {
-            if (!employeeData.tasks[taskName]) {
-              employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
+            if (!employeeData.tasks[finalTaskName]) {
+              employeeData.tasks[finalTaskName] = { quantity: 0, duration: 0, runRate: 0 };
             }
-            employeeData.tasks[taskName].quantity += quantity;
+            employeeData.tasks[finalTaskName].quantity += quantity;
           }
 
           // ALL tasks with start time should be added to detailed records

@@ -313,105 +313,128 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
             );
           })()}
           
-          {/* Detailed Records Table */}
-          {reportData.detailedRecords && reportData.detailedRecords.length > 0 && (
-            <Card className="mt-4">
-              <CardHeader>
-                <CardTitle className="text-base">Detailed Records</CardTitle>
-                <CardDescription>Complete breakdown of all tasks</CardDescription>
-              </CardHeader>
-              <CardContent className="px-0 pb-0">
-                {/* Mobile Card View */}
-                <div className="block sm:hidden space-y-3 p-4">
-                  {reportData.detailedRecords.map((record, index) => (
-                    <Card key={index} className="p-3 bg-muted/50">
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Date:</span>
-                          <span>{record.date}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium">Task:</span>
-                          <span className="font-semibold">{record.taskName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium">Portal:</span>
-                          <span className="break-all">{record.portal}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="font-medium">Quantity:</span>
-                          <span>{record.quantity}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="font-medium">Start:</span> {record.startTime}
-                          </div>
-                          <div>
-                            <span className="font-medium">End:</span> {record.actualEndTime}
-                          </div>
-                        </div>
-                        {(record.chetanRemarks || record.ganesh || record.finalRemarks) && (
-                          <div className="pt-2 border-t">
-                            {record.chetanRemarks && (
-                              <div className="text-xs">
-                                <span className="font-medium">Chetan:</span> {record.chetanRemarks}
-                              </div>
-                            )}
-                            {record.ganesh && (
-                              <div className="text-xs">
-                                <span className="font-medium">Ganesh:</span> {record.ganesh}
-                              </div>
-                            )}
-                            {record.finalRemarks && (
-                              <div className="text-xs">
-                                <span className="font-medium">Final:</span> {record.finalRemarks}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+          {/* Task-wise Detailed Records */}
+          {reportData.detailedRecords && reportData.detailedRecords.length > 0 && (() => {
+            // Group records by task name
+            const taskWiseRecords: { [taskName: string]: typeof reportData.detailedRecords } = {};
+            
+            reportData.detailedRecords.forEach((record) => {
+              const taskName = record.taskName || 'Unknown';
+              if (!taskWiseRecords[taskName]) {
+                taskWiseRecords[taskName] = [];
+              }
+              taskWiseRecords[taskName].push(record);
+            });
 
-                {/* Desktop Table View */}
-                <div className="hidden sm:block overflow-x-auto mobile-scroll">
-                  <Table className="min-w-full">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Date</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Task</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Portal</TableHead>
-                        <TableHead className="text-right px-2 sm:px-4 whitespace-nowrap">Qty</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Start</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Est End</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Act End</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Chetan</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Ganesh</TableHead>
-                        <TableHead className="px-2 sm:px-4 whitespace-nowrap">Final</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reportData.detailedRecords.map((record, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.date}</TableCell>
-                          <TableCell className="font-medium px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.taskName}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[120px] truncate" title={record.portal}>{record.portal}</TableCell>
-                          <TableCell className="text-right px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.quantity}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.startTime}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.estimatedEndTime}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.actualEndTime}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.chetanRemarks || '-'}>{record.chetanRemarks || '-'}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.ganesh || '-'}>{record.ganesh || '-'}</TableCell>
-                          <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.finalRemarks || '-'}>{record.finalRemarks || '-'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            return (
+              <div className="mt-4 space-y-4">
+                {Object.entries(taskWiseRecords).map(([taskName, records]) => {
+                  // Calculate task totals
+                  const totalQty = records.reduce((sum, r) => sum + r.quantity, 0);
+                  const totalDuration = records.reduce((sum, r) => sum + r.duration, 0);
+                  
+                  return (
+                    <Card key={taskName}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle className="text-base">{taskName}</CardTitle>
+                          <div className="flex gap-4 text-sm text-muted-foreground">
+                            <span>Records: {records.length}</span>
+                            <span>Items: {totalQty}</span>
+                            <span>Time: {formatDuration(totalDuration)}</span>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="px-0 pb-0">
+                        {/* Mobile Card View */}
+                        <div className="block sm:hidden space-y-3 p-4">
+                          {records.map((record, index) => (
+                            <Card key={index} className="p-3 bg-muted/50">
+                              <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Date:</span>
+                                  <span>{record.date}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Portal:</span>
+                                  <span className="break-all">{record.portal}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="font-medium">Quantity:</span>
+                                  <span>{record.quantity}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                  <div>
+                                    <span className="font-medium">Start:</span> {record.startTime}
+                                  </div>
+                                  <div>
+                                    <span className="font-medium">End:</span> {record.actualEndTime}
+                                  </div>
+                                </div>
+                                {(record.chetanRemarks || record.ganesh || record.finalRemarks) && (
+                                  <div className="pt-2 border-t">
+                                    {record.chetanRemarks && (
+                                      <div className="text-xs">
+                                        <span className="font-medium">Chetan:</span> {record.chetanRemarks}
+                                      </div>
+                                    )}
+                                    {record.ganesh && (
+                                      <div className="text-xs">
+                                        <span className="font-medium">Ganesh:</span> {record.ganesh}
+                                      </div>
+                                    )}
+                                    {record.finalRemarks && (
+                                      <div className="text-xs">
+                                        <span className="font-medium">Final:</span> {record.finalRemarks}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="hidden sm:block overflow-x-auto mobile-scroll">
+                          <Table className="min-w-full">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Date</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Portal</TableHead>
+                                <TableHead className="text-right px-2 sm:px-4 whitespace-nowrap">Qty</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Start</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Est End</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Act End</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Chetan</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Ganesh</TableHead>
+                                <TableHead className="px-2 sm:px-4 whitespace-nowrap">Final</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {records.map((record, index) => (
+                                <TableRow key={index}>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.date}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[120px] truncate" title={record.portal}>{record.portal}</TableCell>
+                                  <TableCell className="text-right px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.quantity}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.startTime}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.estimatedEndTime}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm whitespace-nowrap">{record.actualEndTime}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.chetanRemarks || '-'}>{record.chetanRemarks || '-'}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.ganesh || '-'}>{record.ganesh || '-'}</TableCell>
+                                  <TableCell className="px-2 sm:px-4 text-xs sm:text-sm max-w-[100px] truncate" title={record.finalRemarks || '-'}>{record.finalRemarks || '-'}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </AccordionContent>
       </AccordionItem>
     </Accordion>
