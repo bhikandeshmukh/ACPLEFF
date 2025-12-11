@@ -103,6 +103,22 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
         );
 
         const rows = getSheetResponse.data.values || [];
+        
+        // Read task names from Row 1 headers dynamically
+        const headerRow = rows[0] || [];
+        const sheetTasks: { name: string; startCol: number }[] = [];
+        
+        for (let col = 1; col < headerRow.length; col += TASK_COLUMN_WIDTH) {
+          const taskHeader = headerRow[col];
+          if (taskHeader && typeof taskHeader === 'string' && taskHeader.trim()) {
+            sheetTasks.push({ name: taskHeader.trim(), startCol: col });
+          }
+        }
+        
+        // If no headers found, fall back to ALL_TASKS
+        const tasksToCheck = sheetTasks.length > 0 
+          ? sheetTasks 
+          : ALL_TASKS.map((name, idx) => ({ name, startCol: 1 + (idx * TASK_COLUMN_WIDTH) }));
 
         // Look for active tasks (missing end time)
         for (let i = 2; i < rows.length; i++) {
@@ -111,14 +127,14 @@ async function checkActiveTaskFromSheets(employeeName: string): Promise<ActiveTa
 
           if (!rowDate) continue;
 
-          for (let taskIndex = 0; taskIndex < ALL_TASKS.length; taskIndex++) {
-            const startCol = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+          for (const taskInfo of tasksToCheck) {
+            const startCol = taskInfo.startCol;
             const portalName = row[startCol] || '';
             const itemQty = row[startCol + 1] || 0;
             const startTime = row[startCol + 2] || '';
             const actualEndTime = row[startCol + 4] || '';
 
-            const taskName = ALL_TASKS[taskIndex];
+            const taskName = taskInfo.name;
             const hasNoEndTime = !actualEndTime || actualEndTime === '' || actualEndTime === null || actualEndTime === undefined;
 
             if (portalName && startTime && hasNoEndTime) {
@@ -228,17 +244,6 @@ export async function startTask(data: StartTaskRecord) {
     });
 
     let rows = getSheetResponse.data.values || [];
-
-    // Find task column
-    const taskIndex = ALL_TASKS.indexOf(validatedFields.data.taskName);
-    if (taskIndex === -1) {
-      return {
-        success: false,
-        error: `Task "${validatedFields.data.taskName}" is not configured.`,
-      };
-    }
-
-    const startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
     
     // Helper function to convert column index to letter (A, B, ..., Z, AA, AB, etc.)
     const getColumnLetter = (colIndex: number): string => {
@@ -251,25 +256,41 @@ export async function startTask(data: StartTaskRecord) {
       return result;
     };
 
-    // Check if task headers exist, create if not
+    // Find task column from sheet headers (Row 1) - DYNAMIC DETECTION
     const headerRow1 = rows[0] || [];
     const headerRow2 = rows[1] || [];
-    const taskHeaderExists = headerRow1[startColIndex] && headerRow1[startColIndex].toString().trim() !== '';
+    const taskName = validatedFields.data.taskName;
     
-    if (!taskHeaderExists) {
-      // Create headers for this task
-      const taskName = validatedFields.data.taskName;
+    let startColIndex = -1;
+    let lastTaskEndCol = 0; // Track where last task ends
+    
+    // Search for existing task in headers (every 8 columns starting from B)
+    for (let col = 1; col < headerRow1.length; col += TASK_COLUMN_WIDTH) {
+      const headerValue = headerRow1[col];
+      if (headerValue && headerValue.toString().trim().toUpperCase() === taskName.toUpperCase()) {
+        startColIndex = col;
+        break;
+      }
+      if (headerValue && headerValue.toString().trim() !== '') {
+        lastTaskEndCol = col + TASK_COLUMN_WIDTH;
+      }
+    }
+    
+    // If task not found in headers, create new column at the end
+    if (startColIndex === -1) {
+      // New task - place after last existing task
+      startColIndex = lastTaskEndCol > 0 ? lastTaskEndCol : 1;
+      
+      // Create headers for this new task
       const subHeaders = ['Portal', 'No. Of Piece', 'Start Time', 'Estimated End Time', 'Actual End Time', 'Chetan Remarks', 'Ganesh', 'Final Remarks'];
       
-      // Prepare header data
       const startCol = getColumnLetter(startColIndex);
       const endCol = getColumnLetter(startColIndex + TASK_COLUMN_WIDTH - 1);
       
-      // Row 1: Task name (will be in first column of the task block)
-      const row1Data: string[] = [];
-      row1Data[0] = taskName;
+      // Row 1: Task name
+      const row1Data: string[] = [taskName];
       for (let i = 1; i < TASK_COLUMN_WIDTH; i++) {
-        row1Data[i] = '';
+        row1Data.push('');
       }
       
       // Row 2: Sub-headers
