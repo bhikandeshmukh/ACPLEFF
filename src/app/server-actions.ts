@@ -584,11 +584,11 @@ export async function endTask(data: EndTaskRecord) {
     
     const submissionDateStr = formatDateForSheet(new Date(activeTask.startTime));
     const startTimeStr = isoToLocalTimeString(activeTask.startTime);
-    const expectedPortal = activeTask.taskName === "OTHER WORK" ? activeTask.otherTaskName : activeTask.portalName;
+    const expectedPortal = (activeTask.taskName === "OTHER WORK" ? activeTask.otherTaskName : activeTask.portalName)?.trim() || '';
 
-    console.log(`🔍 Looking for task: date=${submissionDateStr}, portal=${expectedPortal}, startTime=${startTimeStr}, col=${startColIndex}`);
+    console.log(`🔍 Looking for task: date=${submissionDateStr}, portal="${expectedPortal}", startTime=${startTimeStr}, col=${startColIndex}`);
 
-    // Find matching row - with flexible matching
+    // Find matching row - with flexible matching (trim all values)
     let targetRowIndex = -1;
     for (let i = 2; i < rows.length; i++) {
       const rowDate = rows[i][0]?.toString().trim();
@@ -597,14 +597,13 @@ export async function endTask(data: EndTaskRecord) {
       const rowEndTime = rows[i][startColIndex + 4];
       
       // Check if this row has no end time (active task)
-      const hasNoEndTime = !rowEndTime || rowEndTime === '' || rowEndTime === null;
+      const hasNoEndTime = !rowEndTime || rowEndTime.toString().trim() === '';
       
-      console.log(`🔍 Row ${i}: date=${rowDate}, portal=${rowPortal}, startTime=${rowStartTime}, hasNoEndTime=${hasNoEndTime}`);
+      // Match by date and portal (case-insensitive, trimmed), and ensure no end time (active task)
+      const dateMatch = rowDate === submissionDateStr;
+      const portalMatch = rowPortal?.toLowerCase() === expectedPortal?.toLowerCase();
       
-      // Match by date and portal, and ensure no end time (active task)
-      if (rowDate === submissionDateStr && 
-          rowPortal === expectedPortal && 
-          hasNoEndTime) {
+      if (dateMatch && portalMatch && hasNoEndTime) {
         targetRowIndex = i;
         console.log(`✅ Found matching row at index ${i}`);
         break;
