@@ -599,7 +599,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
           // For OTHER WORK, quantity can be 0, but for other tasks it must be > 0
           if (taskName !== "OTHER WORK" && quantity <= 0) continue;
           // For OTHER WORK, always include regardless of quantity (time-based calculation)
-          // No need to skip OTHER WORK tasks based on quantity
+          // IMPORTANT: OTHER WORK with 0 quantity should appear in reports (as per requirement)
 
           const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
           if (!startTimeMatch) continue;
@@ -652,11 +652,17 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
                 }
                 
-                // For OTHER WORK, only track quantity if > 0, always track duration
-                if (taskName !== "OTHER WORK" || quantity > 0) {
+                // For OTHER WORK, always track both quantity and duration (even if quantity is 0)
+                // For other tasks, only track if quantity > 0
+                if (taskName === "OTHER WORK") {
+                  // OTHER WORK: Always track quantity (even 0) and duration
                   employeeData.tasks[taskName].quantity += quantity;
+                  employeeData.tasks[taskName].duration += duration;
+                } else if (quantity > 0) {
+                  // Other tasks: Only track if quantity > 0
+                  employeeData.tasks[taskName].quantity += quantity;
+                  employeeData.tasks[taskName].duration += duration;
                 }
-                employeeData.tasks[taskName].duration += duration;
               }
             }
           }
