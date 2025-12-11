@@ -266,29 +266,23 @@ export async function startTask(data: StartTaskRecord) {
     
     // Search for existing task in headers (every 8 columns starting from B)
     // Only check columns that actually have data
-    for (let col = 1; col < Math.min(headerRow1.length, 200); col += TASK_COLUMN_WIDTH) {
+    for (let col = 1; col < Math.min(headerRow1.length + TASK_COLUMN_WIDTH, 500); col += TASK_COLUMN_WIDTH) {
       const headerValue = headerRow1[col];
       if (headerValue && headerValue.toString().trim().toUpperCase() === taskName.toUpperCase()) {
         startColIndex = col;
         break;
       }
-      // Only update lastTaskEndCol if there's actually a task header here
+      // Track the last column that has any task header
       if (headerValue && headerValue.toString().trim() !== '') {
         lastTaskEndCol = col + TASK_COLUMN_WIDTH;
       }
     }
     
-    // If task not found in headers, use position from ALL_TASKS config
+    // If task not found in headers, place AFTER all existing tasks (never overwrite)
     if (startColIndex === -1) {
-      // First try to find position from ALL_TASKS array
-      const configTaskIndex = ALL_TASKS.indexOf(taskName);
-      if (configTaskIndex !== -1) {
-        // Use configured position
-        startColIndex = 1 + (configTaskIndex * TASK_COLUMN_WIDTH);
-      } else {
-        // New task not in config - place after last existing task
-        startColIndex = lastTaskEndCol;
-      }
+      // Always place new task after the last existing task - NEVER use ALL_TASKS position
+      // This prevents overwriting existing columns
+      startColIndex = lastTaskEndCol;
       
       // Get current sheet properties to check column count
       const sheetId = await getSheetIdByName(sheets, spreadsheetId, sanitizedName);
