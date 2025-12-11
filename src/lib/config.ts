@@ -8,10 +8,13 @@ export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
   "PICKING": 40,
   "GUN": 20,
   "PACKING": 38,
-  "PENDING ORDER": 720,
+  "PENDING ORDER": 200,
   "SORTING": 54,
-  "RETURN": 65,
+  "RETURN OMS": 65,
+  "RETURN RECEVING": 30,
+  "ONLINE PICKUP": 30,
   "COCOBLU PO": 35,
+  "MYNTRA PO": 35,
   "BARCODE, TAGLOOP, BUTTON": 65,
   "OTHER WORK": 60,
 };
@@ -24,8 +27,11 @@ export const ALL_TASKS = [
   "PACKING",
   "PENDING ORDER",
   "SORTING",
-  "RETURN",
+  "RETURN OMS",
+  "RETURN RECEVING",
+  "ONLINE PICKUP",
   "COCOBLU PO",
+  "MYNTRA PO",
   "BARCODE, TAGLOOP, BUTTON",
   "OTHER WORK"
 ];
@@ -36,12 +42,10 @@ export const tasks = ["PICKING", "GUN", "PACKING", "PENDING ORDER", "SORTING", "
 export const employees: Employee[] = [
   { id: "1", name: "SAGAR" },
   { id: "2", name: "KIRAN" },
-  { id: "3", name: "PRAVEEN" },
-  { id: "4", name: "KARAN" },
-  { id: "5", name: "LATA" },
-  { id: "6", name: "VAISHALI" },
-  { id: "7", name: "HITESH" },  
-  { id: "8", name: "NIRBHAY" }
+  { id: "3", name: "KARAN" },
+  { id: "4", name: "LATA" },
+  { id: "5", name: "VAISHALI" },
+  { id: "6", name: "NIRBHAY" }
 ];
 
 // Get spreadsheet ID from environment (server-side only)
@@ -64,7 +68,7 @@ export const GOOGLE_SHEET_ID = '';
 
 // API configuration
 export const API_CONFIG = {
-  SHEET_FETCH_RANGE: 'A1:ZZ500', // Reduced from 1000 to 500 rows
+  SHEET_FETCH_RANGE: 'A1:BZ500', // Reduced from 1000 to 500 rows
   ACTIVE_TASK_CACHE_TTL: 100, // 60 seconds (increased from 5 seconds to reduce cache churn)
   REPORT_CACHE_TTL: 30000, // 30 seconds
   AUTO_REFRESH_INTERVAL: 30000, // 30 seconds

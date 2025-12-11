@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { DateRange } from 'react-day-picker';
 import { Loader2 } from 'lucide-react';
+import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS } from '@/lib/config';
 import {
   Accordion,
   AccordionContent,
@@ -236,17 +237,31 @@ export function EmployeeReportCard({ employeeName, dateRange }: EmployeeReportCa
                     <TableRow>
                       <TableHead className="px-4">Task</TableHead>
                       <TableHead className="text-right px-4">Qty</TableHead>
-                      <TableHead className="text-right px-4">Run Rate</TableHead>
+                      <TableHead className="text-right px-4">Config</TableHead>
+                      <TableHead className="text-right px-4">Actual</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(reportData.tasks).map(([taskName, taskDetails]) => (
-                      <TableRow key={taskName}>
-                        <TableCell className="font-medium px-4">{taskName}</TableCell>
-                        <TableCell className="text-right px-4">{taskDetails.quantity}</TableCell>
-                        <TableCell className="text-right px-4">{taskDetails.runRate.toFixed(2)}s</TableCell>
-                      </TableRow>
-                    ))}
+                    {Object.entries(reportData.tasks).map(([taskName, taskDetails]) => {
+                      const configuredDuration = TASK_DURATIONS_SECONDS[taskName] || DEFAULT_DURATION_SECONDS;
+                      const actualRate = taskDetails.runRate;
+                      const isOverTarget = actualRate > configuredDuration;
+                      
+                      return (
+                        <TableRow key={taskName}>
+                          <TableCell className="font-medium px-4">{taskName}</TableCell>
+                          <TableCell className="text-right px-4">{taskDetails.quantity}</TableCell>
+                          <TableCell className="text-right px-4 text-muted-foreground">
+                            {configuredDuration}s
+                          </TableCell>
+                          <TableCell className={`text-right px-4 font-medium ${
+                            isOverTarget ? 'text-red-600' : 'text-green-600'
+                          }`}>
+                            {actualRate.toFixed(2)}s
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>

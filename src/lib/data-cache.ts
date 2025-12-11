@@ -15,7 +15,7 @@ export interface CacheEntry<T> {
 class DataCache {
   private cache: Map<string, CacheEntry<any>> = new Map();
   private readonly DEFAULT_TTL = API_CONFIG.REPORT_CACHE_TTL;
-  private cleanupInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     // Start cleanup interval only on server-side

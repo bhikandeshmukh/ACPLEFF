@@ -86,6 +86,7 @@ export default function ReportPage() {
           const emptyReport: EmployeeReport = {
             name: employeeName,
             totalWorkTime: 0,
+            productiveWorkTime: 0,
             totalItems: 0,
             averageRunRate: 0,
             tasks: {},
@@ -127,6 +128,7 @@ export default function ReportPage() {
           const emptyReport: EmployeeReport = {
             name: employeeName,
             totalWorkTime: 0,
+            productiveWorkTime: 0,
             totalItems: 0,
             averageRunRate: 0,
             tasks: {},

@@ -1,6 +1,6 @@
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
-import { FilePlus, LineChart } from 'lucide-react';
+import { FilePlus, LineChart, Settings } from 'lucide-react';
 import { ActiveTaskStatus } from '@/components/active-task-status';
 
 // Force dynamic rendering - no caching for real-time Google Sheets data
@@ -45,6 +45,13 @@ export default function LandingPage() {
                     <LineChart className="h-5 w-5 sm:h-6 sm:w-6" />
                     <span className="hidden xs:inline">View Report</span>
                     <span className="xs:hidden">Reports</span>
+                  </button>
+                </Link>
+                <Link href="/config" className="w-full">
+                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-base sm:text-lg font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground active:bg-accent/80 h-12 sm:h-14 lg:h-16 px-4 sm:px-6 lg:px-8 w-full transition-colors">
+                    <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <span className="hidden xs:inline">Configuration</span>
+                    <span className="xs:hidden">Config</span>
                   </button>
                 </Link>
               </div>

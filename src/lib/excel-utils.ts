@@ -6,6 +6,7 @@
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import type { EmployeeReport } from '@/app/server-actions';
+import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS } from '@/lib/config';
 
 /**
  * Format duration in seconds to readable format
@@ -71,6 +72,41 @@ export function generateEmployeeExcel(
   ];
 
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+  // Task Configuration Sheet
+  const configData = [
+    ['Task Configuration'],
+    [''],
+    ['Generated On:', format(new Date(), 'dd/MM/yyyy hh:mm a')],
+    ['Default Duration:', `${DEFAULT_DURATION_SECONDS} seconds`],
+    [''],
+    ['Task Name', 'Duration (Seconds)', 'Duration (Formatted)', 'Type'],
+  ];
+
+  ALL_TASKS.forEach((task) => {
+    const duration = TASK_DURATIONS_SECONDS[task] || DEFAULT_DURATION_SECONDS;
+    const isDefault = !TASK_DURATIONS_SECONDS[task];
+    const formattedDuration = formatDuration(duration);
+    
+    configData.push([
+      task,
+      duration.toString(),
+      formattedDuration,
+      isDefault ? 'Default' : 'Custom',
+    ]);
+  });
+
+  const configSheet = XLSX.utils.aoa_to_sheet(configData);
+  
+  // Set column widths
+  configSheet['!cols'] = [
+    { wch: 30 }, // Task Name
+    { wch: 18 }, // Duration (Seconds)
+    { wch: 20 }, // Duration (Formatted)
+    { wch: 15 }, // Type
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, configSheet, 'Task Configuration');
 
   // Detailed Records Sheet
   if (employeeData.detailedRecords && employeeData.detailedRecords.length > 0) {
@@ -218,6 +254,41 @@ export function generateAllEmployeesExcel(
   ];
 
   XLSX.utils.book_append_sheet(workbook, overallSheet, 'Overall Summary');
+
+  // Task Configuration Sheet
+  const configData = [
+    ['Task Configuration'],
+    [''],
+    ['Generated On:', format(new Date(), 'dd/MM/yyyy hh:mm a')],
+    ['Default Duration:', `${DEFAULT_DURATION_SECONDS} seconds`],
+    [''],
+    ['Task Name', 'Duration (Seconds)', 'Duration (Formatted)', 'Type'],
+  ];
+
+  ALL_TASKS.forEach((task) => {
+    const duration = TASK_DURATIONS_SECONDS[task] || DEFAULT_DURATION_SECONDS;
+    const isDefault = !TASK_DURATIONS_SECONDS[task];
+    const formattedDuration = formatDuration(duration);
+    
+    configData.push([
+      task,
+      duration.toString(),
+      formattedDuration,
+      isDefault ? 'Default' : 'Custom',
+    ]);
+  });
+
+  const configSheet = XLSX.utils.aoa_to_sheet(configData);
+  
+  // Set column widths
+  configSheet['!cols'] = [
+    { wch: 30 }, // Task Name
+    { wch: 18 }, // Duration (Seconds)
+    { wch: 20 }, // Duration (Formatted)
+    { wch: 15 }, // Type
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, configSheet, 'Task Configuration');
 
   // Individual employee sheets
   allEmployeesData.forEach((employee) => {

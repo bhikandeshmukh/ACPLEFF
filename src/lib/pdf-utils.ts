@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { format } from 'date-fns';
 import type { EmployeeReport } from '@/app/server-actions';
+import { TASK_DURATIONS_SECONDS, DEFAULT_DURATION_SECONDS, ALL_TASKS } from '@/lib/config';
 
 export async function generateEmployeePDF(employeeData: EmployeeReport, dateRange: { from: Date; to: Date }) {
   const pdf = new jsPDF('p', 'mm', 'a4');
@@ -132,6 +133,68 @@ export async function generateEmployeePDF(employeeData: EmployeeReport, dateRang
     });
   }
   
+  // Task Configuration Page
+  pdf.addPage();
+  yPos = 20;
+  
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Task Configuration', 20, yPos);
+  yPos += 15;
+  
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Default Duration: ${DEFAULT_DURATION_SECONDS} seconds`, 20, yPos);
+  yPos += 10;
+  
+  // Task configuration table
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  const configHeaders = ['Task Name', 'Duration (s)', 'Formatted', 'Type'];
+  const configColWidths = [50, 25, 30, 25];
+  let xPos = 20;
+  
+  configHeaders.forEach((header, i) => {
+    pdf.text(header, xPos, yPos);
+    xPos += configColWidths[i];
+  });
+  
+  yPos += 5;
+  pdf.line(20, yPos, 150, yPos);
+  yPos += 5;
+  
+  // Task configuration data
+  pdf.setFont('helvetica', 'normal');
+  ALL_TASKS.forEach((task) => {
+    if (yPos > pageHeight - 30) {
+      pdf.addPage();
+      yPos = 20;
+    }
+    
+    const duration = TASK_DURATIONS_SECONDS[task] || DEFAULT_DURATION_SECONDS;
+    const isDefault = !TASK_DURATIONS_SECONDS[task];
+    
+    // Format duration
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    const formattedDuration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    
+    xPos = 20;
+    const configRowData = [
+      task,
+      duration.toString(),
+      formattedDuration,
+      isDefault ? 'Default' : 'Custom'
+    ];
+    
+    configRowData.forEach((data, i) => {
+      const text = data.length > 20 ? data.substring(0, 20) + '...' : data;
+      pdf.text(text, xPos, yPos);
+      xPos += configColWidths[i];
+    });
+    yPos += 8;
+  });
+
   // Footer
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
@@ -395,6 +458,68 @@ export async function generateAllEmployeesPDF(employeesData: EmployeeReport[], d
     }
   });
   
+  // Task Configuration Page
+  pdf.addPage();
+  yPos = 20;
+  
+  pdf.setFontSize(16);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Task Configuration', 20, yPos);
+  yPos += 15;
+  
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Default Duration: ${DEFAULT_DURATION_SECONDS} seconds`, 20, yPos);
+  yPos += 10;
+  
+  // Task configuration table
+  pdf.setFontSize(9);
+  pdf.setFont('helvetica', 'bold');
+  const configHeaders = ['Task Name', 'Duration (s)', 'Formatted', 'Type'];
+  const configColWidths = [50, 25, 30, 25];
+  xPos = 20;
+  
+  configHeaders.forEach((header, i) => {
+    pdf.text(header, xPos, yPos);
+    xPos += configColWidths[i];
+  });
+  
+  yPos += 5;
+  pdf.line(20, yPos, 150, yPos);
+  yPos += 5;
+  
+  // Task configuration data
+  pdf.setFont('helvetica', 'normal');
+  ALL_TASKS.forEach((task) => {
+    if (yPos > pageHeight - 30) {
+      pdf.addPage();
+      yPos = 20;
+    }
+    
+    const duration = TASK_DURATIONS_SECONDS[task] || DEFAULT_DURATION_SECONDS;
+    const isDefault = !TASK_DURATIONS_SECONDS[task];
+    
+    // Format duration
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    const formattedDuration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+    
+    xPos = 20;
+    const configRowData = [
+      task,
+      duration.toString(),
+      formattedDuration,
+      isDefault ? 'Default' : 'Custom'
+    ];
+    
+    configRowData.forEach((data, i) => {
+      const text = data.length > 20 ? data.substring(0, 20) + '...' : data;
+      pdf.text(text, xPos, yPos);
+      xPos += configColWidths[i];
+    });
+    yPos += 8;
+  });
+
   // Footer on last page
   pdf.setFontSize(8);
   pdf.setFont('helvetica', 'normal');
