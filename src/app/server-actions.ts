@@ -581,20 +581,7 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       detailedRecords: [],
     };
 
-    console.log(`📊 Processing ${dateMatchingRows.length} rows for employee: ${employeeName}`);
-    console.log(`📋 ALL_TASKS array:`, ALL_TASKS);
-    const otherWorkIndex = ALL_TASKS.indexOf("OTHER WORK");
-    const otherWorkStartCol = 1 + (otherWorkIndex * TASK_COLUMN_WIDTH);
-    console.log(`🔢 OTHER WORK is at index: ${otherWorkIndex}, StartCol: ${otherWorkStartCol}`);
-    console.log(`📏 TASK_COLUMN_WIDTH: ${TASK_COLUMN_WIDTH}`);
-    
     for (const row of dateMatchingRows) {
-      console.log(`📅 Processing row for date: ${row[0]}, Row length: ${row.length}`);
-      
-      // Specifically check OTHER WORK columns
-      const otherWorkCols = row.slice(otherWorkStartCol, otherWorkStartCol + TASK_COLUMN_WIDTH);
-      console.log(`🔍 OTHER WORK columns (${otherWorkStartCol}-${otherWorkStartCol + TASK_COLUMN_WIDTH - 1}):`, otherWorkCols);
-      
       for (let i = 0; i < ALL_TASKS.length; i++) {
         const taskName = ALL_TASKS[i];
         const startCol = 1 + (i * TASK_COLUMN_WIDTH);
@@ -604,157 +591,38 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         const endTimeStr = row[startCol + 4];
         const dateStr = row[0];
 
-        // Log every task check for debugging
-        if (taskName === "OTHER WORK" || (startTimeStr && startTimeStr.trim())) {
-          console.log(`🔍 Task Check: ${taskName}, StartCol=${startCol}, Portal="${row[startCol] || ''}", Qty="${itemQtyStr || ''}", Start="${startTimeStr || ''}", End="${endTimeStr || ''}"`);
-        }
+        // All tasks are processed as they are stored in the sheet
+        // No conversion or special handling - maximum transparency
 
-        // SPECIAL CASE: Detect OTHER WORK tasks stored in COCOBLU PO column
-        if (taskName === "COCOBLU PO" && startTimeStr && row[startCol]) {
-          const portalText = row[startCol].toString().toLowerCase();
-          const otherWorkKeywords = [
-            'meeting', 'tea time', 'work sheet', 'work complete', 'lunch', 'break', 'training', 'cleaning',
-            'vikas sir', 'sir', 'discussion', 'call', 'phone', 'email', 'admin', 'office', 'paperwork',
-            'inventory', 'stock', 'counting', 'organizing', 'setup', 'maintenance', 'repair'
-          ];
-          
-          const isOtherWork = otherWorkKeywords.some(keyword => portalText.includes(keyword));
-          
-          if (isOtherWork) {
-            console.log(`🔄 Converting COCOBLU PO to OTHER WORK: "${row[startCol]}"`);
-            // Process this as OTHER WORK instead
-            const otherWorkTaskName = "OTHER WORK";
-            const quantity = parseInt(itemQtyStr, 10) || 0;
-            
-            try {
-              const baseDate = parseDateFromSheet(dateStr);
-              const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-              
-              if (startTimeMatch) {
-                let hours = parseInt(startTimeMatch[1], 10);
-                const minutes = parseInt(startTimeMatch[2], 10);
-                const ampm = startTimeMatch[3].toUpperCase();
-
-                if (ampm === 'PM' && hours !== 12) hours += 12;
-                else if (ampm === 'AM' && hours === 12) hours = 0;
-
-                const startTime = new Date(baseDate);
-                startTime.setHours(hours, minutes, 0, 0);
-
-                let duration = 0;
-                let actualEndTime = endTimeStr || "In Progress";
-
-                if (endTimeStr) {
-                  const endTimeMatch = endTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-                  if (endTimeMatch) {
-                    let endHours = parseInt(endTimeMatch[1], 10);
-                    const endMinutes = parseInt(endTimeMatch[2], 10);
-                    const endAmpm = endTimeMatch[3].toUpperCase();
-
-                    if (endAmpm === 'PM' && endHours !== 12) endHours += 12;
-                    else if (endAmpm === 'AM' && endHours === 12) endHours = 0;
-
-                    const endTime = new Date(baseDate);
-                    endTime.setHours(endHours, endMinutes, 0, 0);
-
-                    duration = differenceInSeconds(endTime, startTime);
-                    if (duration < 0) duration += 24 * 60 * 60;
-
-                    // Add to total work time
-                    employeeData.totalWorkTime += duration;
-
-                    // Add to task summary
-                    if (!employeeData.tasks[otherWorkTaskName]) {
-                      employeeData.tasks[otherWorkTaskName] = { quantity: 0, duration: 0, runRate: 0 };
-                    }
-                    employeeData.tasks[otherWorkTaskName].quantity += quantity;
-                    employeeData.tasks[otherWorkTaskName].duration += duration;
-                  }
-                } else {
-                  // In-progress OTHER WORK task
-                  if (!employeeData.tasks[otherWorkTaskName]) {
-                    employeeData.tasks[otherWorkTaskName] = { quantity: 0, duration: 0, runRate: 0 };
-                  }
-                  employeeData.tasks[otherWorkTaskName].quantity += quantity;
-                }
-
-                // Add to detailed records
-                employeeData.detailedRecords.push({
-                  date: dateStr,
-                  taskName: otherWorkTaskName,
-                  portal: row[startCol] || '',
-                  quantity,
-                  startTime: startTimeStr,
-                  estimatedEndTime: row[startCol + 3] || '',
-                  actualEndTime,
-                  chetanRemarks: row[startCol + 5] || '',
-                  ganesh: row[startCol + 6] || '',
-                  finalRemarks: row[startCol + 7] || '',
-                  duration,
-                  runRate: quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration
-                });
-
-                console.log(`✅ OTHER WORK (converted) added to records: ${dateStr}, Portal="${row[startCol]}", Qty=${quantity}, Duration=${duration}`);
-              }
-            } catch (error) {
-              console.log(`❌ Error processing converted OTHER WORK:`, error);
-            }
-          }
-        }
-
+        // Skip only if there's no start time - this is the ONLY condition to skip
         if (!startTimeStr || !dateStr) {
-          if (taskName === "OTHER WORK") {
-            console.log(`❌ OTHER WORK skipped: No start time or date. StartTime="${startTimeStr}", Date="${dateStr}"`);
-          }
           continue;
-        }
-        
-        // Special handling for OTHER WORK - ensure it's always processed if it has start time
-        if (taskName === "OTHER WORK") {
-          console.log(`🔍 OTHER WORK Check: Date=${dateStr}, Portal="${row[startCol] || ''}", Qty="${row[startCol + 1] || ''}", Start="${startTimeStr || ''}", End="${row[startCol + 4] || ''}", HasStartTime=${!!startTimeStr}`);
-          
-          // Even if no start time, let's see what's in the row
-          if (!startTimeStr) {
-            console.log(`⚠️ OTHER WORK has no start time, full row data:`, row.slice(startCol, startCol + 8));
-          }
         }
 
         try {
           const baseDate = parseDateFromSheet(dateStr);
           const quantity = parseInt(itemQtyStr, 10) || 0;
 
-          // For OTHER WORK, quantity can be 0, but for other tasks it must be > 0
-          // CRITICAL: OTHER WORK tasks should ALWAYS be included, even with 0 quantity
-          if (taskName !== "OTHER WORK" && quantity <= 0) {
-            continue; // Skip non-OTHER WORK tasks with 0 quantity
-          }
-          
-          // For OTHER WORK: Always process regardless of quantity (time-based calculation)
-          // This ensures OTHER WORK with 0 quantity appears in reports (as per requirement)
-          if (taskName === "OTHER WORK") {
-            console.log(`📝 OTHER WORK Processing: Date=${dateStr}, Qty=${quantity}, Start=${startTimeStr}, End=${endTimeStr || 'In Progress'}`);
-          }
+          // ALL tasks with start time are included - no quantity restrictions
+          // This ensures maximum inclusivity in reports
 
           const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
           if (!startTimeMatch) {
-            // For OTHER WORK, still add to detailed records even if time parsing fails
-            if (taskName === "OTHER WORK") {
-              console.log(`⚠️ OTHER WORK time parsing failed but adding to records: ${startTimeStr}`);
-              employeeData.detailedRecords.push({
-                date: dateStr,
-                taskName,
-                portal: row[startCol] || '',
-                quantity,
-                startTime: startTimeStr,
-                estimatedEndTime: row[startCol + 3] || '',
-                actualEndTime: row[startCol + 4] || "In Progress",
-                chetanRemarks: row[startCol + 5] || '',
-                ganesh: row[startCol + 6] || '',
-                finalRemarks: row[startCol + 7] || '',
-                duration: 0,
-                runRate: 0
-              });
-            }
+            // Still add to detailed records even if time parsing fails - for ALL tasks
+            employeeData.detailedRecords.push({
+              date: dateStr,
+              taskName,
+              portal: row[startCol] || '',
+              quantity,
+              startTime: startTimeStr,
+              estimatedEndTime: row[startCol + 3] || '',
+              actualEndTime: row[startCol + 4] || "In Progress",
+              chetanRemarks: row[startCol + 5] || '',
+              ganesh: row[startCol + 6] || '',
+              finalRemarks: row[startCol + 7] || '',
+              duration: 0,
+              runRate: 0
+            });
             continue;
           }
 
@@ -806,34 +674,25 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
                   employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
                 }
                 
-                // For OTHER WORK, always track both quantity and duration (even if quantity is 0)
-                // For other tasks, only track if quantity > 0
-                if (taskName === "OTHER WORK") {
-                  // OTHER WORK: Always track quantity (even 0) and duration
-                  employeeData.tasks[taskName].quantity += quantity;
-                  employeeData.tasks[taskName].duration += duration;
-                } else if (quantity > 0) {
-                  // Other tasks: Only track if quantity > 0
-                  employeeData.tasks[taskName].quantity += quantity;
-                  employeeData.tasks[taskName].duration += duration;
-                }
+                // ALL tasks: Track quantity and duration
+                // No special handling - every task with start time gets recorded
+                employeeData.tasks[taskName].quantity += quantity;
+                employeeData.tasks[taskName].duration += duration;
               }
             }
           }
 
-          // SPECIAL HANDLING: Add OTHER WORK to task summary even if no end time (in progress)
-          if (taskName === "OTHER WORK" && !endTimeStr) {
+          // Add ALL tasks to task summary even if no end time (in progress)
+          if (!endTimeStr) {
             if (!employeeData.tasks[taskName]) {
               employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
             }
-            // Add quantity even for in-progress OTHER WORK tasks
             employeeData.tasks[taskName].quantity += quantity;
-            console.log(`📝 OTHER WORK (In Progress) added to task summary: Qty=${quantity}`);
           }
 
-          // CRITICAL FIX: Always add OTHER WORK to detailed records (even if in progress)
-          // For other tasks, only add if they have proper duration calculation
-          const shouldAddToRecords = taskName === "OTHER WORK" || (duration > 0 && endTimeStr);
+          // ALL tasks with start time should be added to detailed records
+          // No special handling - task wise reporting
+          const shouldAddToRecords = true; // Always add if we reached this point (has start time)
           
           if (shouldAddToRecords) {
             employeeData.detailedRecords.push({
@@ -848,15 +707,8 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
               ganesh: row[startCol + 6] || '',
               finalRemarks: row[startCol + 7] || '',
               duration,
-              runRate: taskName === "OTHER WORK" ? 
-                (quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration) : 
-                ((duration > 0 && quantity > 0) ? duration / quantity : 0)
+              runRate: (duration > 0 && quantity > 0) ? duration / quantity : 0
             });
-            
-            // Log for debugging
-            if (taskName === "OTHER WORK") {
-              console.log(`✅ OTHER WORK added to detailed records: ${dateStr}, Qty=${quantity}, Duration=${duration}, Status=${actualEndTime}`);
-            }
           }
         } catch (error) {
           errorLogger.warning(`Error processing record for ${taskName}`, error, 'getEmployeeReport');
@@ -869,17 +721,9 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
     for (const taskName in employeeData.tasks) {
       const task = employeeData.tasks[taskName];
       
-      if (taskName === "OTHER WORK") {
-        // For OTHER WORK: if quantity > 0, calculate per item; if quantity = 0, use total duration
-        if (task.quantity > 0) {
-          task.runRate = task.duration / task.quantity;
-        } else {
-          task.runRate = task.duration; // Time-based for 0 quantity
-        }
-      } else {
-        // For other tasks, run rate is duration per item
-        task.runRate = task.quantity > 0 ? task.duration / task.quantity : 0;
-      }
+      // Simple run rate calculation for ALL tasks
+      // Run rate = duration per item (if quantity > 0), otherwise 0
+      task.runRate = task.quantity > 0 ? task.duration / task.quantity : 0;
     }
 
     employeeData.averageRunRate = employeeData.totalItems > 0 ? employeeData.productiveWorkTime / employeeData.totalItems : 0;
