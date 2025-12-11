@@ -83,7 +83,7 @@ export const GOOGLE_SHEET_ID = '';
 
 // API configuration
 export const API_CONFIG = {
-  SHEET_FETCH_RANGE: 'A1:BZ500', // Reduced from 1000 to 500 rows
+  SHEET_FETCH_RANGE: 'A1:ZZ500', // Reduced from 1000 to 500 rows
   ACTIVE_TASK_CACHE_TTL: 100, // 60 seconds (increased from 5 seconds to reduce cache churn)
   REPORT_CACHE_TTL: 30000, // 30 seconds
   AUTO_REFRESH_INTERVAL: 30000, // 30 seconds

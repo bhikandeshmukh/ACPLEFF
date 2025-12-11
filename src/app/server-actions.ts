@@ -262,24 +262,59 @@ export async function startTask(data: StartTaskRecord) {
     const taskName = validatedFields.data.taskName;
     
     let startColIndex = -1;
-    let lastTaskEndCol = 0; // Track where last task ends
+    let lastTaskEndCol = 1; // Start from column B (index 1)
     
     // Search for existing task in headers (every 8 columns starting from B)
-    for (let col = 1; col < headerRow1.length; col += TASK_COLUMN_WIDTH) {
+    // Only check columns that actually have data
+    for (let col = 1; col < Math.min(headerRow1.length, 200); col += TASK_COLUMN_WIDTH) {
       const headerValue = headerRow1[col];
       if (headerValue && headerValue.toString().trim().toUpperCase() === taskName.toUpperCase()) {
         startColIndex = col;
         break;
       }
+      // Only update lastTaskEndCol if there's actually a task header here
       if (headerValue && headerValue.toString().trim() !== '') {
         lastTaskEndCol = col + TASK_COLUMN_WIDTH;
       }
     }
     
-    // If task not found in headers, create new column at the end
+    // If task not found in headers, use position from ALL_TASKS config
     if (startColIndex === -1) {
-      // New task - place after last existing task
-      startColIndex = lastTaskEndCol > 0 ? lastTaskEndCol : 1;
+      // First try to find position from ALL_TASKS array
+      const configTaskIndex = ALL_TASKS.indexOf(taskName);
+      if (configTaskIndex !== -1) {
+        // Use configured position
+        startColIndex = 1 + (configTaskIndex * TASK_COLUMN_WIDTH);
+      } else {
+        // New task not in config - place after last existing task
+        startColIndex = lastTaskEndCol;
+      }
+      
+      // Get current sheet properties to check column count
+      const sheetId = await getSheetIdByName(sheets, spreadsheetId, sanitizedName);
+      const sheetInfo = spreadsheetInfo.data.sheets?.find(s => s.properties?.title === sanitizedName);
+      const currentColumnCount = sheetInfo?.properties?.gridProperties?.columnCount || 26;
+      
+      // Auto-expand columns if needed
+      const requiredColumns = startColIndex + TASK_COLUMN_WIDTH + 5;
+      if (sheetId !== null && requiredColumns > currentColumnCount) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [{
+              updateSheetProperties: {
+                properties: {
+                  sheetId: sheetId,
+                  gridProperties: {
+                    columnCount: requiredColumns
+                  }
+                },
+                fields: 'gridProperties.columnCount'
+              }
+            }]
+          }
+        });
+      }
       
       // Create headers for this new task
       const subHeaders = ['Portal', 'No. Of Piece', 'Start Time', 'Estimated End Time', 'Actual End Time', 'Chetan Remarks', 'Ganesh', 'Final Remarks'];
