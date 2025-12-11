@@ -584,22 +584,38 @@ export async function endTask(data: EndTaskRecord) {
     
     const submissionDateStr = formatDateForSheet(new Date(activeTask.startTime));
     const startTimeStr = isoToLocalTimeString(activeTask.startTime);
+    const expectedPortal = activeTask.taskName === "OTHER WORK" ? activeTask.otherTaskName : activeTask.portalName;
 
-    // Find matching row
+    console.log(`🔍 Looking for task: date=${submissionDateStr}, portal=${expectedPortal}, startTime=${startTimeStr}, col=${startColIndex}`);
+
+    // Find matching row - with flexible matching
     let targetRowIndex = -1;
     for (let i = 2; i < rows.length; i++) {
-      if (rows[i][0] === submissionDateStr &&
-          rows[i][startColIndex] === (activeTask.taskName === "OTHER WORK" ? activeTask.otherTaskName : activeTask.portalName) &&
-          rows[i][startColIndex + 2] === startTimeStr) {
+      const rowDate = rows[i][0]?.toString().trim();
+      const rowPortal = rows[i][startColIndex]?.toString().trim();
+      const rowStartTime = rows[i][startColIndex + 2]?.toString().trim();
+      const rowEndTime = rows[i][startColIndex + 4];
+      
+      // Check if this row has no end time (active task)
+      const hasNoEndTime = !rowEndTime || rowEndTime === '' || rowEndTime === null;
+      
+      console.log(`🔍 Row ${i}: date=${rowDate}, portal=${rowPortal}, startTime=${rowStartTime}, hasNoEndTime=${hasNoEndTime}`);
+      
+      // Match by date and portal, and ensure no end time (active task)
+      if (rowDate === submissionDateStr && 
+          rowPortal === expectedPortal && 
+          hasNoEndTime) {
         targetRowIndex = i;
+        console.log(`✅ Found matching row at index ${i}`);
         break;
       }
     }
 
     if (targetRowIndex === -1) {
+      console.log(`❌ No matching row found for task`);
       return {
         success: false,
-        error: "Could not find the matching task entry.",
+        error: "Could not find the matching task entry. Please refresh and try again.",
       };
     }
 
