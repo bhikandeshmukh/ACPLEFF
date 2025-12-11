@@ -556,11 +556,12 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       if (index < 2 || !row[0]) return false;
 
       try {
-        const rowDate = parseDateFromSheet(row[0].toString().trim());
+        const rowDateStr = row[0].toString().trim();
+        const rowDate = parseDateFromSheet(rowDateStr);
         rowDate.setHours(12, 0, 0, 0);
-
+        
         return rowDate >= startDate && rowDate <= endDate;
-      } catch {
+      } catch (error) {
         return false;
       }
     });
@@ -580,7 +581,20 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
       detailedRecords: [],
     };
 
+    console.log(`📊 Processing ${dateMatchingRows.length} rows for employee: ${employeeName}`);
+    console.log(`📋 ALL_TASKS array:`, ALL_TASKS);
+    const otherWorkIndex = ALL_TASKS.indexOf("OTHER WORK");
+    const otherWorkStartCol = 1 + (otherWorkIndex * TASK_COLUMN_WIDTH);
+    console.log(`🔢 OTHER WORK is at index: ${otherWorkIndex}, StartCol: ${otherWorkStartCol}`);
+    console.log(`📏 TASK_COLUMN_WIDTH: ${TASK_COLUMN_WIDTH}`);
+    
     for (const row of dateMatchingRows) {
+      console.log(`📅 Processing row for date: ${row[0]}, Row length: ${row.length}`);
+      
+      // Specifically check OTHER WORK columns
+      const otherWorkCols = row.slice(otherWorkStartCol, otherWorkStartCol + TASK_COLUMN_WIDTH);
+      console.log(`🔍 OTHER WORK columns (${otherWorkStartCol}-${otherWorkStartCol + TASK_COLUMN_WIDTH - 1}):`, otherWorkCols);
+      
       for (let i = 0; i < ALL_TASKS.length; i++) {
         const taskName = ALL_TASKS[i];
         const startCol = 1 + (i * TASK_COLUMN_WIDTH);
@@ -590,11 +604,119 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
         const endTimeStr = row[startCol + 4];
         const dateStr = row[0];
 
-        if (!startTimeStr || !dateStr) continue;
+        // Log every task check for debugging
+        if (taskName === "OTHER WORK" || (startTimeStr && startTimeStr.trim())) {
+          console.log(`🔍 Task Check: ${taskName}, StartCol=${startCol}, Portal="${row[startCol] || ''}", Qty="${itemQtyStr || ''}", Start="${startTimeStr || ''}", End="${endTimeStr || ''}"`);
+        }
+
+        // SPECIAL CASE: Detect OTHER WORK tasks stored in COCOBLU PO column
+        if (taskName === "COCOBLU PO" && startTimeStr && row[startCol]) {
+          const portalText = row[startCol].toString().toLowerCase();
+          const otherWorkKeywords = [
+            'meeting', 'tea time', 'work sheet', 'work complete', 'lunch', 'break', 'training', 'cleaning',
+            'vikas sir', 'sir', 'discussion', 'call', 'phone', 'email', 'admin', 'office', 'paperwork',
+            'inventory', 'stock', 'counting', 'organizing', 'setup', 'maintenance', 'repair'
+          ];
+          
+          const isOtherWork = otherWorkKeywords.some(keyword => portalText.includes(keyword));
+          
+          if (isOtherWork) {
+            console.log(`🔄 Converting COCOBLU PO to OTHER WORK: "${row[startCol]}"`);
+            // Process this as OTHER WORK instead
+            const otherWorkTaskName = "OTHER WORK";
+            const quantity = parseInt(itemQtyStr, 10) || 0;
+            
+            try {
+              const baseDate = parseDateFromSheet(dateStr);
+              const startTimeMatch = startTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+              
+              if (startTimeMatch) {
+                let hours = parseInt(startTimeMatch[1], 10);
+                const minutes = parseInt(startTimeMatch[2], 10);
+                const ampm = startTimeMatch[3].toUpperCase();
+
+                if (ampm === 'PM' && hours !== 12) hours += 12;
+                else if (ampm === 'AM' && hours === 12) hours = 0;
+
+                const startTime = new Date(baseDate);
+                startTime.setHours(hours, minutes, 0, 0);
+
+                let duration = 0;
+                let actualEndTime = endTimeStr || "In Progress";
+
+                if (endTimeStr) {
+                  const endTimeMatch = endTimeStr.toString().match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                  if (endTimeMatch) {
+                    let endHours = parseInt(endTimeMatch[1], 10);
+                    const endMinutes = parseInt(endTimeMatch[2], 10);
+                    const endAmpm = endTimeMatch[3].toUpperCase();
+
+                    if (endAmpm === 'PM' && endHours !== 12) endHours += 12;
+                    else if (endAmpm === 'AM' && endHours === 12) endHours = 0;
+
+                    const endTime = new Date(baseDate);
+                    endTime.setHours(endHours, endMinutes, 0, 0);
+
+                    duration = differenceInSeconds(endTime, startTime);
+                    if (duration < 0) duration += 24 * 60 * 60;
+
+                    // Add to total work time
+                    employeeData.totalWorkTime += duration;
+
+                    // Add to task summary
+                    if (!employeeData.tasks[otherWorkTaskName]) {
+                      employeeData.tasks[otherWorkTaskName] = { quantity: 0, duration: 0, runRate: 0 };
+                    }
+                    employeeData.tasks[otherWorkTaskName].quantity += quantity;
+                    employeeData.tasks[otherWorkTaskName].duration += duration;
+                  }
+                } else {
+                  // In-progress OTHER WORK task
+                  if (!employeeData.tasks[otherWorkTaskName]) {
+                    employeeData.tasks[otherWorkTaskName] = { quantity: 0, duration: 0, runRate: 0 };
+                  }
+                  employeeData.tasks[otherWorkTaskName].quantity += quantity;
+                }
+
+                // Add to detailed records
+                employeeData.detailedRecords.push({
+                  date: dateStr,
+                  taskName: otherWorkTaskName,
+                  portal: row[startCol] || '',
+                  quantity,
+                  startTime: startTimeStr,
+                  estimatedEndTime: row[startCol + 3] || '',
+                  actualEndTime,
+                  chetanRemarks: row[startCol + 5] || '',
+                  ganesh: row[startCol + 6] || '',
+                  finalRemarks: row[startCol + 7] || '',
+                  duration,
+                  runRate: quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration
+                });
+
+                console.log(`✅ OTHER WORK (converted) added to records: ${dateStr}, Portal="${row[startCol]}", Qty=${quantity}, Duration=${duration}`);
+              }
+            } catch (error) {
+              console.log(`❌ Error processing converted OTHER WORK:`, error);
+            }
+          }
+        }
+
+        if (!startTimeStr || !dateStr) {
+          if (taskName === "OTHER WORK") {
+            console.log(`❌ OTHER WORK skipped: No start time or date. StartTime="${startTimeStr}", Date="${dateStr}"`);
+          }
+          continue;
+        }
         
         // Special handling for OTHER WORK - ensure it's always processed if it has start time
-        if (taskName === "OTHER WORK" && startTimeStr) {
-          console.log(`🔍 Processing OTHER WORK: Date=${dateStr}, Portal=${row[startCol] || 'N/A'}, Qty=${row[startCol + 1] || 0}, Start=${startTimeStr}, End=${row[startCol + 4] || 'N/A'}`);
+        if (taskName === "OTHER WORK") {
+          console.log(`🔍 OTHER WORK Check: Date=${dateStr}, Portal="${row[startCol] || ''}", Qty="${row[startCol + 1] || ''}", Start="${startTimeStr || ''}", End="${row[startCol + 4] || ''}", HasStartTime=${!!startTimeStr}`);
+          
+          // Even if no start time, let's see what's in the row
+          if (!startTimeStr) {
+            console.log(`⚠️ OTHER WORK has no start time, full row data:`, row.slice(startCol, startCol + 8));
+          }
         }
 
         try {
