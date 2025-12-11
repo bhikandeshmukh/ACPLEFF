@@ -239,6 +239,83 @@ export async function startTask(data: StartTaskRecord) {
     }
 
     const startColIndex = 1 + (taskIndex * TASK_COLUMN_WIDTH);
+    
+    // Helper function to convert column index to letter (A, B, ..., Z, AA, AB, etc.)
+    const getColumnLetter = (colIndex: number): string => {
+      let result = '';
+      let col = colIndex;
+      while (col >= 0) {
+        result = String.fromCharCode(65 + (col % 26)) + result;
+        col = Math.floor(col / 26) - 1;
+      }
+      return result;
+    };
+
+    // Check if task headers exist, create if not
+    const headerRow1 = rows[0] || [];
+    const headerRow2 = rows[1] || [];
+    const taskHeaderExists = headerRow1[startColIndex] && headerRow1[startColIndex].toString().trim() !== '';
+    
+    if (!taskHeaderExists) {
+      // Create headers for this task
+      const taskName = validatedFields.data.taskName;
+      const subHeaders = ['Portal', 'No. Of Piece', 'Start Time', 'Estimated End Time', 'Actual End Time', 'Chetan Remarks', 'Ganesh', 'Final Remarks'];
+      
+      // Prepare header data
+      const startCol = getColumnLetter(startColIndex);
+      const endCol = getColumnLetter(startColIndex + TASK_COLUMN_WIDTH - 1);
+      
+      // Row 1: Task name (will be in first column of the task block)
+      const row1Data: string[] = [];
+      row1Data[0] = taskName;
+      for (let i = 1; i < TASK_COLUMN_WIDTH; i++) {
+        row1Data[i] = '';
+      }
+      
+      // Row 2: Sub-headers
+      const row2Data = subHeaders;
+      
+      // Also ensure DATE header exists in A1 and A2
+      const dateHeaderUpdates: { range: string; values: string[][] }[] = [];
+      if (!headerRow1[0] || headerRow1[0].toString().trim() === '') {
+        dateHeaderUpdates.push({
+          range: `${sanitizedName}!A1`,
+          values: [['DATE']]
+        });
+      }
+      if (!headerRow2[0] || headerRow2[0].toString().trim() === '') {
+        dateHeaderUpdates.push({
+          range: `${sanitizedName}!A2`,
+          values: [['Date']]
+        });
+      }
+      
+      // Write headers
+      await sheets.spreadsheets.values.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          valueInputOption: 'USER_ENTERED',
+          data: [
+            {
+              range: `${sanitizedName}!${startCol}1:${endCol}1`,
+              values: [row1Data]
+            },
+            {
+              range: `${sanitizedName}!${startCol}2:${endCol}2`,
+              values: [row2Data]
+            },
+            ...dateHeaderUpdates
+          ]
+        }
+      });
+      
+      // Refresh rows data after header creation
+      const refreshResponse = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${sanitizedName}!${API_CONFIG.SHEET_FETCH_RANGE}`
+      });
+      rows = refreshResponse.data.values || [];
+    }
     const submissionDateStr = formatDateForSheet(new Date(validatedFields.data.startTime));
 
     // Find or create row
