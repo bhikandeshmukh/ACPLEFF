@@ -1,8 +1,8 @@
 # ACPL Efficiency Recorder
 
-**Status:** ✅ Production Ready | **Version:** 2.0 (All Issues Fixed)
+**Status:** ✅ Production Ready | **Version:** 3.0
 
-A Next.js-based task tracking application for warehouse/fulfillment center employees to record work efficiency and generate productivity reports.
+A comprehensive Next.js-based task tracking application for warehouse/fulfillment center employees to record work efficiency, manage configurations, and generate detailed productivity reports with performance analytics.
 
 ## Quick Start
 
@@ -27,50 +27,76 @@ npm run dev
 
 ## Features
 
+### Core Functionality
 - ✅ Task submission with start/end times
 - ✅ Active task tracking with estimated completion time
 - ✅ Real-time Google Sheets integration
-- ✅ Comprehensive reporting and analytics
-- ✅ PDF and Excel export
-- ✅ Mobile-responsive design
+- ✅ Multi-employee task management
+- ✅ Mobile-responsive design with touch optimization
 - ✅ Offline support with network status indicator
+
+### Configuration Management
+- ✅ **Configuration Dashboard** - Centralized task duration management
+- ✅ **Task Duration Settings** - Configurable time per item for each task
+- ✅ **Employee Management** - Add/edit employee profiles
+- ✅ **Portal Configuration** - Manage available work portals
+- ✅ **Export Configuration** - CSV/JSON export of system settings
+
+### Advanced Reporting & Analytics
+- ✅ **Performance Comparison** - Configured vs actual performance tracking
+- ✅ **Color-coded Performance** - Visual indicators for target achievement
+- ✅ **Comprehensive Reports** - Employee, task, and portal-wise analytics
+- ✅ **Multi-format Export** - PDF, Excel with configuration sheets
+- ✅ **Real-time Monitoring** - Live active task status across all employees
+
+### Technical Features
 - ✅ Proper timezone handling (works globally)
 - ✅ Automatic retry logic with error recovery
 - ✅ Request deduplication for performance
+- ✅ Intelligent caching system
+- ✅ Business hours validation
 
-## Recent Fixes (Version 2.0)
+## New in Version 3.0
 
-All 20 critical issues have been fixed:
+### Configuration Management System
+- **Configuration Dashboard** (`/config`) - Complete system settings management
+- **Task Duration Configuration** - Set and view time allocations per task
+- **Performance Analytics** - Compare configured vs actual performance
+- **Export Capabilities** - Download configuration as CSV/JSON
 
-| Issue | Status |
-|-------|--------|
-| Page reload after task start | ✅ Fixed |
-| Timezone conversion bugs | ✅ Fixed |
-| Race conditions | ✅ Fixed |
-| API performance (50% improvement) | ✅ Fixed |
-| Error recovery (3 retries) | ✅ Fixed |
-| Hardcoded secrets | ✅ Fixed |
-| Input validation | ✅ Fixed |
-| Memory leaks | ✅ Fixed |
-| Request timeout | ✅ Fixed |
-| Audit logging | ✅ Fixed |
-| Task close delay | ✅ Fixed |
-| OTHER WORK 0 quantity | ✅ Fixed |
+### Enhanced Reporting
+- **Task Configuration Sheets** - All exports now include configuration data
+- **Performance Comparison Tables** - Visual indicators for target vs actual
+- **Comprehensive Analytics** - Task-wise, portal-wise, and employee-wise breakdowns
+- **Real-time Status Monitoring** - Live view of all active tasks
+
+### User Experience Improvements
+- **Tabbed Configuration Interface** - Organized settings management
+- **Color-coded Performance Indicators** - Green for on-target, red for over-target
+- **Mobile-optimized Configuration** - Responsive design for all devices
+- **Export Options** - Multiple format support with configuration data
 
 ## Configuration Guide
 
----
+### Using the Configuration Dashboard
 
-## Configuration
+The easiest way to manage your system is through the **Configuration Dashboard** at `/config`:
+
+1. **Access Configuration**: Click "Configuration" on the main page
+2. **View Task Durations**: See all task time allocations with formatted display
+3. **Monitor System Settings**: Check employee count, portal count, and overview metrics
+4. **Export Configuration**: Download system settings as CSV or JSON
+
+### Manual Configuration (Advanced Users)
 
 ### 1. How to Add or Update Employee Names
 
-To add a new employee or modify an existing one, you need to edit the `employees` array in `src/lib/data.ts`.
+To add a new employee or modify an existing one, you need to edit the `employees` array in `src/lib/config.ts`.
 
-**File:** `src/lib/data.ts`
+**File:** `src/lib/config.ts`
 
 **Instructions:**
-1. Open the file `src/lib/data.ts`.
+1. Open the file `src/lib/config.ts`.
 2. Find the `employees` constant.
 3. Add a new object to the array for a new employee. Each employee needs a unique `id` and a `name`.
 
@@ -78,16 +104,16 @@ To add a new employee or modify an existing one, you need to edit the `employees
 To add a new employee named "RAHUL", you would add the following line to the array:
 
 ```typescript
-// src/lib/data.ts
-
-import type { Employee } from "@/lib/definitions";
+// src/lib/config.ts
 
 export const employees: Employee[] = [
   { id: "1", name: "SAGAR" },
   { id: "2", name: "KIRAN" },
-  { id: "3", name: "PRAVEEN" },
-  // ... other employees
-  { id: "8", name: "RAHUL" }, // <-- Add the new employee here
+  { id: "3", name: "KARAN" },
+  { id: "4", name: "LATA" },
+  { id: "5", name: "VAISHALI" },
+  { id: "6", name: "NIRBHAY" },
+  { id: "7", name: "RAHUL" }, // <-- Add the new employee here
 ];
 ```
 
@@ -116,7 +142,10 @@ export const portals = [
     "AMAZON DF", 
     "COCOBLU PO", 
     "MYNTRA-ANOUK", 
-    // ... other portals
+    "MYNTRA-HANUKU", 
+    "FLIPKART", 
+    "AJIO-BE ACTIVE", 
+    "AJIO-HANUKU", 
     "SHOPIFY",
     "MEESHO" // <-- Add the new portal here
 ];
@@ -152,26 +181,29 @@ To add a new task called "PACKING":
 export const ALL_TASKS = [
   "PICKING",
   "GUN",
+  "PACKING",
+  "PENDING ORDER",
   "SORTING",
-  "RETURN",
+  "RETURN OMS",
+  "RETURN RECEVING",
+  "ONLINE PICKUP",
   "COCOBLU PO",
+  "MYNTRA PO",
   "BARCODE, TAGLOOP, BUTTON",
-  "PACKING", // <-- Add new task here
+  "NEW TASK", // <-- Add new task here
   "OTHER WORK"
-];
-
-export const portals = [
-    // ... portals
 ];
 
 export const tasks = [
     "PICKING", 
     "GUN", 
+    "PACKING", 
+    "PENDING ORDER", 
     "SORTING", 
     "RETURN", 
     "COCOBLU PO", 
     "BARCODE, TAGLOOP, BUTTON", 
-    "PACKING", // <-- And also add it here
+    "NEW TASK", // <-- And also add it here
     "OTHER WORK"
 ];
 ```
@@ -197,13 +229,19 @@ To change the time for "PICKING" from 40 to 45 seconds, and to set a time for ou
 
 // Configuration for task durations per item
 export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
-  "PICKING": 45, // <-- Changed from 40 to 45
+  "PICKING": 40,
   "GUN": 20,
+  "PACKING": 38,
+  "PENDING ORDER": 200,
   "SORTING": 54,
-  "RETURN": 65,
+  "RETURN OMS": 65,
+  "RETURN RECEVING": 30,
+  "ONLINE PICKUP": 30,
   "COCOBLU PO": 35,
+  "MYNTRA PO": 35,
   "BARCODE, TAGLOOP, BUTTON": 65,
-  "PACKING": 50, // <-- Add timing for the new task
+  "NEW TASK": 50, // <-- Add timing for the new task
+  "OTHER WORK": 60,
 };
 
 // ...
@@ -211,7 +249,23 @@ export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
 
 ---
 
-## New Utilities
+## Application Structure
+
+### Pages
+- **`/`** - Main dashboard with navigation to all features
+- **`/task`** - Task submission and management interface
+- **`/report`** - Comprehensive reporting and analytics
+- **`/config`** - Configuration management dashboard
+
+### Key Components
+- **`EnhancedTrackerForm`** - Main task submission interface
+- **`ConfigurationView`** - System configuration management
+- **`EmployeeReportCard`** - Individual employee performance display
+- **`ActiveTaskStatus`** - Real-time task monitoring
+
+---
+
+## Technical Utilities
 
 ### Timezone Utils (`src/lib/timezone-utils.ts`)
 Proper timezone handling without hardcoded offsets:
@@ -312,15 +366,23 @@ OTHER WORK tasks with 0 quantity are now included in reports.
 
 ---
 
-## Performance Improvements
+## Configuration Features
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| API Data Transfer | 702,000 cells | 351,000 cells | 50% ↓ |
-| Duplicate Requests | Yes | No | 100% ↓ |
-| Error Recovery | None | 3 retries | ∞ ↑ |
-| Timeout Handling | None | 30s | ∞ ↑ |
-| Memory Leaks | Yes | No | Fixed |
+### Task Duration Management
+- **Visual Display**: See all task durations with formatted time (e.g., "1m 20s")
+- **Type Indicators**: Distinguish between custom and default durations
+- **Performance Comparison**: Compare configured vs actual employee performance
+- **Export Options**: Download configuration as CSV or JSON
+
+### Employee & Portal Management
+- **Employee Overview**: View all registered employees with status
+- **Portal Configuration**: Manage available work portals
+- **System Metrics**: Total counts and overview statistics
+
+### Report Enhancements
+- **Configuration Sheets**: All PDF/Excel exports include task configuration
+- **Performance Analytics**: Color-coded performance indicators in reports
+- **Comprehensive Data**: Task-wise, portal-wise, and employee-wise breakdowns
 
 ---
 
@@ -334,6 +396,6 @@ For issues or questions:
 
 ---
 
-**Version:** 2.0 (All Issues Fixed)
+**Version:** 3.0 - Configuration Management
 **Status:** ✅ Production Ready
-**Last Updated:** November 2024
+**Last Updated:** December 2024
