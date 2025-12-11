@@ -359,6 +359,56 @@ export async function startTask(data: StartTaskRecord) {
         }
       });
       
+      // Merge cells for task header (Row 1: Portal to Final Remarks)
+      if (sheetId !== null) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [
+              {
+                mergeCells: {
+                  range: {
+                    sheetId: sheetId,
+                    startRowIndex: 0,
+                    endRowIndex: 1,
+                    startColumnIndex: startColIndex,
+                    endColumnIndex: startColIndex + TASK_COLUMN_WIDTH
+                  },
+                  mergeType: 'MERGE_ALL'
+                }
+              },
+              {
+                // Center align and bold the merged header
+                repeatCell: {
+                  range: {
+                    sheetId: sheetId,
+                    startRowIndex: 0,
+                    endRowIndex: 1,
+                    startColumnIndex: startColIndex,
+                    endColumnIndex: startColIndex + TASK_COLUMN_WIDTH
+                  },
+                  cell: {
+                    userEnteredFormat: {
+                      horizontalAlignment: 'CENTER',
+                      textFormat: {
+                        bold: true,
+                        fontSize: 12
+                      },
+                      backgroundColor: {
+                        red: 0.9,
+                        green: 0.9,
+                        blue: 0.9
+                      }
+                    }
+                  },
+                  fields: 'userEnteredFormat(horizontalAlignment,textFormat,backgroundColor)'
+                }
+              }
+            ]
+          }
+        });
+      }
+      
       // Refresh rows data after header creation
       const refreshResponse = await sheets.spreadsheets.values.get({
         spreadsheetId,
