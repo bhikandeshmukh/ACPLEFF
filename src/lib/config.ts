@@ -37,7 +37,22 @@ export const ALL_TASKS = [
 ];
 
 export const portals = ["AMAZON DF", "COCOBLU PO", "MYNTRA-ANOUK", "MYNTRA-HANUKU", "FLIPKART", "AJIO-BE ACTIVE", "AJIO-HANUKU", "SHOPIFY"];
-export const tasks = ["PICKING", "GUN", "PACKING", "PENDING ORDER", "SORTING", "RETURN", "COCOBLU PO", "BARCODE, TAGLOOP, BUTTON", "OTHER WORK"];
+
+// Tasks for dropdown
+export const tasks = [
+  "PICKING",
+  "GUN",
+  "PACKING",
+  "PENDING ORDER",
+  "SORTING",
+  "RETURN OMS",
+  "RETURN RECEVING",
+  "ONLINE PICKUP",
+  "COCOBLU PO",
+  "MYNTRA PO",
+  "BARCODE, TAGLOOP, BUTTON",
+  "OTHER WORK"
+];
 
 export const employees: Employee[] = [
   { id: "1", name: "SAGAR" },
