@@ -699,22 +699,43 @@ export async function getEmployeeReport(dateRange: { from: Date | string; to: Da
             }
           }
 
-          employeeData.detailedRecords.push({
-            date: dateStr,
-            taskName,
-            portal: row[startCol] || '',
-            quantity,
-            startTime: startTimeStr,
-            estimatedEndTime: row[startCol + 3] || '',
-            actualEndTime,
-            chetanRemarks: row[startCol + 5] || '',
-            ganesh: row[startCol + 6] || '',
-            finalRemarks: row[startCol + 7] || '',
-            duration,
-            runRate: taskName === "OTHER WORK" ? 
-              (quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration) : 
-              ((duration > 0 && quantity > 0) ? duration / quantity : 0)
-          });
+          // SPECIAL HANDLING: Add OTHER WORK to task summary even if no end time (in progress)
+          if (taskName === "OTHER WORK" && !endTimeStr) {
+            if (!employeeData.tasks[taskName]) {
+              employeeData.tasks[taskName] = { quantity: 0, duration: 0, runRate: 0 };
+            }
+            // Add quantity even for in-progress OTHER WORK tasks
+            employeeData.tasks[taskName].quantity += quantity;
+            console.log(`📝 OTHER WORK (In Progress) added to task summary: Qty=${quantity}`);
+          }
+
+          // CRITICAL FIX: Always add OTHER WORK to detailed records (even if in progress)
+          // For other tasks, only add if they have proper duration calculation
+          const shouldAddToRecords = taskName === "OTHER WORK" || (duration > 0 && endTimeStr);
+          
+          if (shouldAddToRecords) {
+            employeeData.detailedRecords.push({
+              date: dateStr,
+              taskName,
+              portal: row[startCol] || '',
+              quantity,
+              startTime: startTimeStr,
+              estimatedEndTime: row[startCol + 3] || '',
+              actualEndTime,
+              chetanRemarks: row[startCol + 5] || '',
+              ganesh: row[startCol + 6] || '',
+              finalRemarks: row[startCol + 7] || '',
+              duration,
+              runRate: taskName === "OTHER WORK" ? 
+                (quantity > 0 ? (duration > 0 ? duration / quantity : 0) : duration) : 
+                ((duration > 0 && quantity > 0) ? duration / quantity : 0)
+            });
+            
+            // Log for debugging
+            if (taskName === "OTHER WORK") {
+              console.log(`✅ OTHER WORK added to detailed records: ${dateStr}, Qty=${quantity}, Duration=${duration}, Status=${actualEndTime}`);
+            }
+          }
         } catch (error) {
           errorLogger.warning(`Error processing record for ${taskName}`, error, 'getEmployeeReport');
           continue;
