@@ -110,8 +110,18 @@ export function generateEmployeeExcel(
 
   // Detailed Records Sheet
   if (employeeData.detailedRecords && employeeData.detailedRecords.length > 0) {
+    // Check if employee is female (Lata or Vaishali)
+    const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
+    const maxWorkMinutes = 540; // 9 hours net work time (after breaks) for all
+    
     const detailedData = [
       ['Detailed Task Records'],
+      [''],
+      ['Employee:', employeeData.name],
+      ['Gender:', isFemale ? 'Female' : 'Male'],
+      ['Work Hours:', isFemale ? '9:00 AM - 6:00 PM (9 hours)' : '9:00 AM - 7:00 PM (10 hours)'],
+      ['Breaks:', '60 minutes (Lunch 30m + Tea 15m x 2)'],
+      ['Net Work Time:', '540 minutes (9 hours)'],
       [''],
       [
         'Date',
@@ -122,6 +132,10 @@ export function generateEmployeeExcel(
         'Estimated End',
         'Actual End',
         'Duration',
+        'Config Time (s)',
+        'Expected Time',
+        'Actual vs Expected',
+        'Efficiency %',
         'Run Rate (s)',
         'Chetan Remarks',
         'Ganesh',
@@ -130,6 +144,35 @@ export function generateEmployeeExcel(
     ];
 
     employeeData.detailedRecords.forEach((record) => {
+      // Get configured time per item for this task
+      const configTimePerItem = TASK_DURATIONS_SECONDS[record.taskName] || DEFAULT_DURATION_SECONDS;
+      const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
+      const actualTime = record.duration;
+      
+      // Calculate efficiency (lower is better - actual time should be <= expected time)
+      let efficiency = 0;
+      let efficiencyStatus = 'N/A';
+      if (expectedTotalTime > 0 && actualTime > 0) {
+        // Efficiency = (Expected / Actual) * 100
+        // If actual < expected, efficiency > 100% (good)
+        // If actual > expected, efficiency < 100% (needs improvement)
+        efficiency = (expectedTotalTime / actualTime) * 100;
+        efficiencyStatus = `${efficiency.toFixed(1)}%`;
+      }
+      
+      // Actual vs Expected comparison
+      let comparison = 'N/A';
+      if (expectedTotalTime > 0 && actualTime > 0) {
+        const diff = actualTime - expectedTotalTime;
+        if (diff > 0) {
+          comparison = `+${formatDuration(diff)} (Slower)`;
+        } else if (diff < 0) {
+          comparison = `${formatDuration(Math.abs(diff))} (Faster)`;
+        } else {
+          comparison = 'On Target';
+        }
+      }
+
       detailedData.push([
         record.date,
         record.taskName,
@@ -139,12 +182,27 @@ export function generateEmployeeExcel(
         record.estimatedEndTime,
         record.actualEndTime,
         formatDuration(record.duration),
+        configTimePerItem.toString(),
+        formatDuration(expectedTotalTime),
+        comparison,
+        efficiencyStatus,
         record.runRate.toFixed(2),
         record.chetanRemarks || '',
         record.ganesh || '',
         record.finalRemarks || '',
       ]);
     });
+    
+    // Add overall efficiency summary at the end
+    const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
+    const overallEfficiency = (totalActualMinutes / maxWorkMinutes) * 100;
+    
+    detailedData.push([]);
+    detailedData.push(['OVERALL EFFICIENCY']);
+    detailedData.push(['Total Actual Work Time:', formatDuration(employeeData.totalWorkTime)]);
+    detailedData.push(['Maximum Work Time:', `${maxWorkMinutes} minutes (9 hours)`]);
+    detailedData.push(['Efficiency:', `${overallEfficiency.toFixed(1)}%`]);
+    detailedData.push(['Status:', overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement']);
 
     const detailedSheet = XLSX.utils.aoa_to_sheet(detailedData);
     
@@ -158,6 +216,10 @@ export function generateEmployeeExcel(
       { wch: 12 }, // Estimated End
       { wch: 12 }, // Actual End
       { wch: 12 }, // Duration
+      { wch: 15 }, // Config Time
+      { wch: 15 }, // Expected Time
+      { wch: 18 }, // Actual vs Expected
+      { wch: 12 }, // Efficiency %
       { wch: 12 }, // Run Rate
       { wch: 25 }, // Chetan Remarks
       { wch: 15 }, // Ganesh

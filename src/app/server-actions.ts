@@ -8,6 +8,7 @@ import { dataCache, DataCache } from "@/lib/data-cache";
 import { errorLogger } from "@/lib/error-logger";
 import { executeWithRetry, RequestDeduplicator } from "@/lib/request-utils";
 import { sanitizeSheetName, validateEmployeeName, validateTaskName, validatePortalName, validateItemQty, validateISODateTime, validateTaskData, escapeForSheets } from "@/lib/validation-utils";
+import { backupTaskStart, backupTaskEnd } from "@/lib/firebase-backup";
 import { isoToLocalTimeString, extractTimeFromISO, formatDateForSheet, parseDateFromSheet, getCurrentDatetimeLocal, datetimeLocalToISO } from "@/lib/timezone-utils";
 
 const TASK_COLUMN_WIDTH = 8;
@@ -493,6 +494,12 @@ export async function startTask(data: StartTaskRecord) {
     // Invalidate cache
     dataCache.invalidate(DataCache.activeTaskKey(employeeName));
 
+    // Backup to Firebase (async, don't wait)
+    backupTaskStart({
+      ...validatedFields.data,
+      timestamp: new Date().toISOString()
+    }).catch(err => console.error('Firebase backup failed:', err));
+
     // Verify task was written
     const verificationTask = await checkActiveTaskFromSheets(employeeName);
 
@@ -669,6 +676,13 @@ export async function endTask(data: EndTaskRecord) {
     dataCache.invalidate(DataCache.activeTaskKey(employeeName));
     // Force fresh check next time by clearing deduplicator for this employee
     requestDeduplicator.clearKey(`active_task:${employeeName}`);
+
+    // Backup to Firebase (async, don't wait)
+    backupTaskEnd(employeeName, {
+      ...validatedFields.data,
+      taskName: activeTask.taskName,
+      timestamp: new Date().toISOString()
+    }).catch(err => console.error('Firebase backup failed:', err));
 
     return {
       success: true,

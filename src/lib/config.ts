@@ -6,17 +6,17 @@ import type { Employee } from "@/lib/definitions";
 // Configuration for task durations per item
 export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
   "PICKING": 40,
-  "GUN": 20,
-  "PACKING": 38,
+  "GUN": 15,
+  "PACKING": 25,
   "PENDING ORDER": 200,
-  "SORTING": 54,
-  "RETURN OMS": 65,
+  "SORTING": 40,
+  "RETURN OMS": 10,
   "RETURN RECEVING": 30,
   "ONLINE PICKUP": 30,
   "COCOBLU PO": 35,
   "MYNTRA PO": 35,
-  "BARCODE, TAGLOOP, BUTTON": 65,
-  "OTHER WORK": 60,
+  "BARCODE, TAGLOOP, BUTTON": 55,
+  "OTHER WORK": 55,
 };
 export const DEFAULT_DURATION_SECONDS = 40;
 
@@ -83,7 +83,7 @@ export const GOOGLE_SHEET_ID = '';
 
 // API configuration
 export const API_CONFIG = {
-  SHEET_FETCH_RANGE: 'A1:ZZ500', // Reduced from 1000 to 500 rows
+  SHEET_FETCH_RANGE: 'A1:ZZ1000', // Reduced from 1000 to 500 rows
   ACTIVE_TASK_CACHE_TTL: 100, // 60 seconds (increased from 5 seconds to reduce cache churn)
   REPORT_CACHE_TTL: 30000, // 30 seconds
   AUTO_REFRESH_INTERVAL: 30000, // 30 seconds

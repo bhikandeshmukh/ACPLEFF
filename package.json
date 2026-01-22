@@ -11,7 +11,9 @@
     "lint": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
     "lint:check": "eslint . --ext .ts,.tsx,.js,.jsx",
     "type-check": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate:firebase": "tsx src/scripts/migrate-to-firebase.ts",
+    "migrate:firebase:client": "tsx src/scripts/migrate-to-firebase-client.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -44,11 +46,12 @@
     "date-fns": "^3.6.0",
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
-    "firebase": "^11.9.1",
+    "firebase": "^11.10.0",
+    "firebase-admin": "^13.6.0",
     "genkit": "^1.14.1",
     "googleapis": "^140.0.1",
     "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.3",
+    "jspdf": "^4.0.0",
     "lucide-react": "^0.552.0",
     "next": "15.5.9",
     "patch-package": "^8.0.0",
@@ -73,6 +76,7 @@
     "genkit-cli": "^1.14.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
