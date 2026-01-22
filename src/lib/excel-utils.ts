@@ -43,14 +43,49 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 /**
+ * Calculate work time that falls during break periods (to be excluded)
+ * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
+ */
+function calculateWorkDuringBreaks(
+  detailedRecords: Array<{ startTime: string; actualEndTime: string; duration: number }>
+): number {
+  const breaks = [
+    { start: 12 * 60 + 30, end: 13 * 60 }, // 12:30 PM - 1:00 PM
+    { start: 15 * 60, end: 15 * 60 + 15 }, // 3:00 PM - 3:15 PM
+    { start: 17 * 60, end: 17 * 60 + 15 }, // 5:00 PM - 5:15 PM
+  ];
+  
+  let totalWorkDuringBreaks = 0;
+  
+  for (const record of detailedRecords) {
+    const taskStart = parseTimeToMinutes(record.startTime);
+    const taskEnd = parseTimeToMinutes(record.actualEndTime);
+    
+    // Skip if task end is "In Progress" or invalid
+    if (!taskEnd || taskEnd === 0 || record.actualEndTime === "In Progress") continue;
+    
+    // Check overlap with each break period
+    for (const breakPeriod of breaks) {
+      if (taskStart < breakPeriod.end && taskEnd > breakPeriod.start) {
+        const overlapStart = Math.max(taskStart, breakPeriod.start);
+        const overlapEnd = Math.min(taskEnd, breakPeriod.end);
+        const overlapMinutes = Math.max(0, overlapEnd - overlapStart);
+        totalWorkDuringBreaks += overlapMinutes;
+      }
+    }
+  }
+  
+  return totalWorkDuringBreaks * 60; // Convert to seconds
+}
+
+/**
  * Calculate available work time considering breaks
  * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
- * If employee worked during break time, that break time is reduced
+ * Break time is always deducted (60 minutes total)
  */
 function calculateAvailableWorkTime(
   inTime: string, 
-  isFemale: boolean, 
-  detailedRecords?: Array<{ startTime: string; actualEndTime: string }>
+  isFemale: boolean
 ): number {
   const inMinutes = parseTimeToMinutes(inTime);
   
@@ -64,9 +99,9 @@ function calculateAvailableWorkTime(
   
   // Break times in minutes from midnight
   const breaks = [
-    { start: 12 * 60 + 30, end: 13 * 60, name: 'Lunch' }, // 12:30 PM - 1:00 PM
-    { start: 15 * 60, end: 15 * 60 + 15, name: 'Tea 1' }, // 3:00 PM - 3:15 PM
-    { start: 17 * 60, end: 17 * 60 + 15, name: 'Tea 2' }, // 5:00 PM - 5:15 PM
+    { start: 12 * 60 + 30, end: 13 * 60 }, // 12:30 PM - 1:00 PM (30 min)
+    { start: 15 * 60, end: 15 * 60 + 15 }, // 3:00 PM - 3:15 PM (15 min)
+    { start: 17 * 60, end: 17 * 60 + 15 }, // 5:00 PM - 5:15 PM (15 min)
   ];
   
   let totalBreakMinutes = 0;
@@ -77,34 +112,12 @@ function calculateAvailableWorkTime(
     if (inMinutes < breakPeriod.end && outMinutes > breakPeriod.start) {
       const breakOverlapStart = Math.max(inMinutes, breakPeriod.start);
       const breakOverlapEnd = Math.min(outMinutes, breakPeriod.end);
-      let breakDuration = Math.max(0, breakOverlapEnd - breakOverlapStart);
-      
-      // Check if employee worked during this break time
-      if (detailedRecords && detailedRecords.length > 0) {
-        for (const record of detailedRecords) {
-          const taskStart = parseTimeToMinutes(record.startTime);
-          const taskEnd = parseTimeToMinutes(record.actualEndTime);
-          
-          // Skip if task end is "In Progress" or invalid
-          if (!taskEnd || taskEnd === 0) continue;
-          
-          // Check if task overlaps with break time
-          if (taskStart < breakPeriod.end && taskEnd > breakPeriod.start) {
-            const workDuringBreakStart = Math.max(taskStart, breakPeriod.start);
-            const workDuringBreakEnd = Math.min(taskEnd, breakPeriod.end);
-            const workDuringBreak = Math.max(0, workDuringBreakEnd - workDuringBreakStart);
-            
-            // Reduce break time by the amount worked
-            breakDuration = Math.max(0, breakDuration - workDuringBreak);
-          }
-        }
-      }
-      
+      const breakDuration = Math.max(0, breakOverlapEnd - breakOverlapStart);
       totalBreakMinutes += breakDuration;
     }
   }
   
-  // Available work time = Total time - Remaining break time
+  // Available work time = Total time - Break time (always 60 min if all breaks fall in work time)
   return Math.max(0, totalMinutes - totalBreakMinutes);
 }
 
@@ -124,17 +137,24 @@ export function generateEmployeeExcel(
   let inTime = 'N/A';
   let availableWorkMinutes = 0;
   let overallEfficiency = 0;
+  let actualWorkSeconds = employeeData.totalWorkTime;
   
   if (employeeData.detailedRecords.length > 0) {
     // Records are already sorted by date and time
     inTime = employeeData.detailedRecords[0].startTime;
     
-    // Calculate available work time based on in time, gender, and actual work during breaks
-    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employeeData.detailedRecords);
+    // Calculate available work time (always deducts 60 min break)
+    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
     
-    // Calculate efficiency: (Actual Work Time / Available Work Time) × 100
-    const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
-    overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
+    // Calculate work done during break times (to be excluded from actual work)
+    const workDuringBreaksSeconds = calculateWorkDuringBreaks(employeeData.detailedRecords);
+    
+    // Actual productive work time = Total work time - Work during breaks
+    actualWorkSeconds = Math.max(0, employeeData.totalWorkTime - workDuringBreaksSeconds);
+    
+    // Calculate efficiency: (Actual Productive Work Time / Available Work Time) × 100
+    const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
+    overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
   }
   
   const outTime = isFemale ? '6:00 PM' : '7:00 PM';
@@ -157,6 +177,8 @@ export function generateEmployeeExcel(
     [''],
     ['Overall Performance'],
     ['Total Actual Work Time:', formatDuration(employeeData.totalWorkTime)],
+    ['Work During Breaks (Excluded):', formatDuration(employeeData.totalWorkTime - actualWorkSeconds)],
+    ['Net Productive Work Time:', formatDuration(actualWorkSeconds)],
     ['Total Items:', employeeData.totalItems],
     ['Average Run Rate:', employeeData.averageRunRate > 0 ? `${employeeData.averageRunRate.toFixed(2)}s / item` : 'N/A'],
     ['Overall Efficiency:', `${overallEfficiency.toFixed(1)}%`],
@@ -230,8 +252,12 @@ export function generateEmployeeExcel(
     
     // Get in time and calculate available work time
     const inTime = employeeData.detailedRecords[0].startTime;
-    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employeeData.detailedRecords);
+    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
     const outTime = isFemale ? '6:00 PM' : '7:00 PM';
+    
+    // Calculate work during breaks
+    const workDuringBreaksSeconds = calculateWorkDuringBreaks(employeeData.detailedRecords);
+    const actualWorkSeconds = Math.max(0, employeeData.totalWorkTime - workDuringBreaksSeconds);
     
     const detailedData = [
       ['Detailed Task Records'],
@@ -315,15 +341,17 @@ export function generateEmployeeExcel(
     });
     
     // Add overall efficiency summary at the end
-    const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
-    const overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
+    const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
+    const overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
     
     detailedData.push([]);
     detailedData.push(['OVERALL EFFICIENCY']);
     detailedData.push(['In Time:', inTime]);
     detailedData.push(['Out Time:', outTime]);
     detailedData.push(['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`]);
-    detailedData.push(['Total Actual Work Time:', formatDuration(employeeData.totalWorkTime)]);
+    detailedData.push(['Total Work Time:', formatDuration(employeeData.totalWorkTime)]);
+    detailedData.push(['Work During Breaks (Excluded):', formatDuration(workDuringBreaksSeconds)]);
+    detailedData.push(['Net Productive Work Time:', formatDuration(actualWorkSeconds)]);
     detailedData.push(['Efficiency:', `${overallEfficiency.toFixed(1)}%`]);
     detailedData.push(['Status:', overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement']);
 
@@ -427,10 +455,14 @@ export function generateAllEmployeesExcel(
     
     if (employee.detailedRecords.length > 0) {
       inTime = employee.detailedRecords[0].startTime;
-      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employee.detailedRecords);
+      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
       
-      const totalActualMinutes = Math.floor(employee.totalWorkTime / 60);
-      overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
+      // Calculate work during breaks and exclude it
+      const workDuringBreaksSeconds = calculateWorkDuringBreaks(employee.detailedRecords);
+      const actualWorkSeconds = Math.max(0, employee.totalWorkTime - workDuringBreaksSeconds);
+      const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
+      
+      overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
     }
     
     const status = overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement';
