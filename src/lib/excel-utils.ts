@@ -34,6 +34,19 @@ export function generateEmployeeExcel(
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
 
+  // Calculate efficiency metrics
+  const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
+  const maxWorkMinutes = 540; // 9 hours net work time for all
+  const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
+  const overallEfficiency = maxWorkMinutes > 0 ? (totalActualMinutes / maxWorkMinutes) * 100 : 0;
+  
+  // Find first task start time (in time)
+  let inTime = 'N/A';
+  if (employeeData.detailedRecords.length > 0) {
+    // Records are already sorted by date and time
+    inTime = employeeData.detailedRecords[0].startTime;
+  }
+
   // Summary Sheet
   const summaryData = [
     ['Employee Report'],
@@ -42,10 +55,19 @@ export function generateEmployeeExcel(
     ['Report Period:', `${format(dateRange.from, 'dd/MM/yyyy')} to ${format(dateRange.to, 'dd/MM/yyyy')}`],
     ['Generated On:', format(new Date(), 'dd/MM/yyyy hh:mm a')],
     [''],
+    ['Work Schedule'],
+    ['Gender:', isFemale ? 'Female' : 'Male'],
+    ['Work Hours:', isFemale ? '9:00 AM - 6:00 PM (9 hours)' : '9:00 AM - 7:00 PM (10 hours)'],
+    ['Breaks:', '60 minutes (Lunch 30m + Tea 15m x 2)'],
+    ['Net Work Time:', '540 minutes (9 hours)'],
+    ['In Time:', inTime],
+    [''],
     ['Overall Performance'],
     ['Total Work Time:', formatDuration(employeeData.totalWorkTime)],
     ['Total Items:', employeeData.totalItems],
     ['Average Run Rate:', employeeData.averageRunRate > 0 ? `${employeeData.averageRunRate.toFixed(2)}s / item` : 'N/A'],
+    ['Overall Efficiency:', `${overallEfficiency.toFixed(1)}%`],
+    ['Status:', overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement'],
     [''],
     ['Task Breakdown'],
     ['Task Name', 'Quantity', 'Duration', 'Run Rate (s/item)'],
@@ -66,9 +88,9 @@ export function generateEmployeeExcel(
   // Set column widths
   summarySheet['!cols'] = [
     { wch: 25 },
-    { wch: 15 },
-    { wch: 15 },
     { wch: 20 },
+    { wch: 20 },
+    { wch: 25 },
   ];
 
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
@@ -291,16 +313,30 @@ export function generateAllEmployeesExcel(
     ['Total Employees:', allEmployeesData.length],
     [''],
     ['Employee Summary'],
-    ['Employee Name', 'Total Work Time', 'Total Items', 'Avg Run Rate (s/item)', 'Tasks Completed'],
+    ['Employee Name', 'In Time', 'Total Work Time', 'Total Items', 'Avg Run Rate (s/item)', 'Efficiency %', 'Status'],
   ];
 
   allEmployeesData.forEach((employee) => {
+    const maxWorkMinutes = 540; // 9 hours net work time for all
+    const totalActualMinutes = Math.floor(employee.totalWorkTime / 60);
+    const overallEfficiency = maxWorkMinutes > 0 ? (totalActualMinutes / maxWorkMinutes) * 100 : 0;
+    
+    // Find first task start time (in time)
+    let inTime = 'N/A';
+    if (employee.detailedRecords.length > 0) {
+      inTime = employee.detailedRecords[0].startTime;
+    }
+    
+    const status = overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement';
+    
     overallData.push([
       employee.name,
+      inTime,
       formatDuration(employee.totalWorkTime),
       employee.totalItems,
       employee.averageRunRate > 0 ? employee.averageRunRate.toFixed(2) : 'N/A',
-      employee.detailedRecords.length,
+      `${overallEfficiency.toFixed(1)}%`,
+      status,
     ]);
   });
 
@@ -308,11 +344,13 @@ export function generateAllEmployeesExcel(
   
   // Set column widths
   overallSheet['!cols'] = [
-    { wch: 20 },
-    { wch: 18 },
-    { wch: 15 },
-    { wch: 20 },
-    { wch: 18 },
+    { wch: 20 }, // Employee Name
+    { wch: 12 }, // In Time
+    { wch: 18 }, // Total Work Time
+    { wch: 15 }, // Total Items
+    { wch: 20 }, // Avg Run Rate
+    { wch: 15 }, // Efficiency %
+    { wch: 20 }, // Status
   ];
 
   XLSX.utils.book_append_sheet(workbook, overallSheet, 'Overall Summary');

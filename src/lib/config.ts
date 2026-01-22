@@ -10,7 +10,7 @@ export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
   "PACKING": 25,
   "PENDING ORDER": 200,
   "SORTING": 40,
-  "RETURN OMS": 10,
+  "RETURN OMS": 10, 
   "RETURN RECEVING": 30,
   "ONLINE PICKUP": 30,
   "COCOBLU PO": 35,
