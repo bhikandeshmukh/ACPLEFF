@@ -45,8 +45,13 @@ function parseTimeToMinutes(timeStr: string): number {
 /**
  * Calculate available work time considering breaks
  * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
+ * If employee worked during break time, that break time is reduced
  */
-function calculateAvailableWorkTime(inTime: string, isFemale: boolean): number {
+function calculateAvailableWorkTime(
+  inTime: string, 
+  isFemale: boolean, 
+  detailedRecords?: Array<{ startTime: string; actualEndTime: string }>
+): number {
   const inMinutes = parseTimeToMinutes(inTime);
   
   // Out time: 6 PM (18:00) for females, 7 PM (19:00) for males
@@ -58,38 +63,49 @@ function calculateAvailableWorkTime(inTime: string, isFemale: boolean): number {
   if (totalMinutes <= 0) return 0;
   
   // Break times in minutes from midnight
-  const lunchStart = 12 * 60 + 30; // 12:30 PM = 750 minutes
-  const lunchEnd = 13 * 60; // 1:00 PM = 780 minutes
-  const break1Start = 15 * 60; // 3:00 PM = 900 minutes
-  const break1End = 15 * 60 + 15; // 3:15 PM = 915 minutes
-  const break2Start = 17 * 60; // 5:00 PM = 1020 minutes
-  const break2End = 17 * 60 + 15; // 5:15 PM = 1035 minutes
+  const breaks = [
+    { start: 12 * 60 + 30, end: 13 * 60, name: 'Lunch' }, // 12:30 PM - 1:00 PM
+    { start: 15 * 60, end: 15 * 60 + 15, name: 'Tea 1' }, // 3:00 PM - 3:15 PM
+    { start: 17 * 60, end: 17 * 60 + 15, name: 'Tea 2' }, // 5:00 PM - 5:15 PM
+  ];
   
-  let breakMinutes = 0;
+  let totalBreakMinutes = 0;
   
-  // Check if lunch break falls within work time
-  if (inMinutes < lunchEnd && outMinutes > lunchStart) {
-    const breakOverlapStart = Math.max(inMinutes, lunchStart);
-    const breakOverlapEnd = Math.min(outMinutes, lunchEnd);
-    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
+  // For each break, check if it falls within work time
+  for (const breakPeriod of breaks) {
+    // Check if break falls within employee's work time
+    if (inMinutes < breakPeriod.end && outMinutes > breakPeriod.start) {
+      const breakOverlapStart = Math.max(inMinutes, breakPeriod.start);
+      const breakOverlapEnd = Math.min(outMinutes, breakPeriod.end);
+      let breakDuration = Math.max(0, breakOverlapEnd - breakOverlapStart);
+      
+      // Check if employee worked during this break time
+      if (detailedRecords && detailedRecords.length > 0) {
+        for (const record of detailedRecords) {
+          const taskStart = parseTimeToMinutes(record.startTime);
+          const taskEnd = parseTimeToMinutes(record.actualEndTime);
+          
+          // Skip if task end is "In Progress" or invalid
+          if (!taskEnd || taskEnd === 0) continue;
+          
+          // Check if task overlaps with break time
+          if (taskStart < breakPeriod.end && taskEnd > breakPeriod.start) {
+            const workDuringBreakStart = Math.max(taskStart, breakPeriod.start);
+            const workDuringBreakEnd = Math.min(taskEnd, breakPeriod.end);
+            const workDuringBreak = Math.max(0, workDuringBreakEnd - workDuringBreakStart);
+            
+            // Reduce break time by the amount worked
+            breakDuration = Math.max(0, breakDuration - workDuringBreak);
+          }
+        }
+      }
+      
+      totalBreakMinutes += breakDuration;
+    }
   }
   
-  // Check if first tea break falls within work time
-  if (inMinutes < break1End && outMinutes > break1Start) {
-    const breakOverlapStart = Math.max(inMinutes, break1Start);
-    const breakOverlapEnd = Math.min(outMinutes, break1End);
-    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
-  }
-  
-  // Check if second tea break falls within work time
-  if (inMinutes < break2End && outMinutes > break2Start) {
-    const breakOverlapStart = Math.max(inMinutes, break2Start);
-    const breakOverlapEnd = Math.min(outMinutes, break2End);
-    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
-  }
-  
-  // Available work time = Total time - Break time
-  return Math.max(0, totalMinutes - breakMinutes);
+  // Available work time = Total time - Remaining break time
+  return Math.max(0, totalMinutes - totalBreakMinutes);
 }
 
 /**
@@ -113,8 +129,8 @@ export function generateEmployeeExcel(
     // Records are already sorted by date and time
     inTime = employeeData.detailedRecords[0].startTime;
     
-    // Calculate available work time based on in time and gender
-    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+    // Calculate available work time based on in time, gender, and actual work during breaks
+    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employeeData.detailedRecords);
     
     // Calculate efficiency: (Actual Work Time / Available Work Time) × 100
     const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
@@ -214,7 +230,7 @@ export function generateEmployeeExcel(
     
     // Get in time and calculate available work time
     const inTime = employeeData.detailedRecords[0].startTime;
-    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employeeData.detailedRecords);
     const outTime = isFemale ? '6:00 PM' : '7:00 PM';
     
     const detailedData = [
@@ -411,7 +427,7 @@ export function generateAllEmployeesExcel(
     
     if (employee.detailedRecords.length > 0) {
       inTime = employee.detailedRecords[0].startTime;
-      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale, employee.detailedRecords);
       
       const totalActualMinutes = Math.floor(employee.totalWorkTime / 60);
       overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
