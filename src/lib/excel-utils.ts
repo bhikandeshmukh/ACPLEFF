@@ -26,6 +26,73 @@ function formatDuration(seconds: number): string {
 }
 
 /**
+ * Parse time string (e.g., "9:30 AM") and return minutes from midnight
+ */
+function parseTimeToMinutes(timeStr: string): number {
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 0;
+  
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const ampm = match[3].toUpperCase();
+  
+  if (ampm === 'PM' && hours !== 12) hours += 12;
+  else if (ampm === 'AM' && hours === 12) hours = 0;
+  
+  return hours * 60 + minutes;
+}
+
+/**
+ * Calculate available work time considering breaks
+ * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
+ */
+function calculateAvailableWorkTime(inTime: string, isFemale: boolean): number {
+  const inMinutes = parseTimeToMinutes(inTime);
+  
+  // Out time: 6 PM (18:00) for females, 7 PM (19:00) for males
+  const outMinutes = isFemale ? 18 * 60 : 19 * 60; // 1080 or 1140 minutes
+  
+  // Total time from in to out
+  let totalMinutes = outMinutes - inMinutes;
+  
+  if (totalMinutes <= 0) return 0;
+  
+  // Break times in minutes from midnight
+  const lunchStart = 12 * 60 + 30; // 12:30 PM = 750 minutes
+  const lunchEnd = 13 * 60; // 1:00 PM = 780 minutes
+  const break1Start = 15 * 60; // 3:00 PM = 900 minutes
+  const break1End = 15 * 60 + 15; // 3:15 PM = 915 minutes
+  const break2Start = 17 * 60; // 5:00 PM = 1020 minutes
+  const break2End = 17 * 60 + 15; // 5:15 PM = 1035 minutes
+  
+  let breakMinutes = 0;
+  
+  // Check if lunch break falls within work time
+  if (inMinutes < lunchEnd && outMinutes > lunchStart) {
+    const breakOverlapStart = Math.max(inMinutes, lunchStart);
+    const breakOverlapEnd = Math.min(outMinutes, lunchEnd);
+    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
+  }
+  
+  // Check if first tea break falls within work time
+  if (inMinutes < break1End && outMinutes > break1Start) {
+    const breakOverlapStart = Math.max(inMinutes, break1Start);
+    const breakOverlapEnd = Math.min(outMinutes, break1End);
+    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
+  }
+  
+  // Check if second tea break falls within work time
+  if (inMinutes < break2End && outMinutes > break2Start) {
+    const breakOverlapStart = Math.max(inMinutes, break2Start);
+    const breakOverlapEnd = Math.min(outMinutes, break2End);
+    breakMinutes += Math.max(0, breakOverlapEnd - breakOverlapStart);
+  }
+  
+  // Available work time = Total time - Break time
+  return Math.max(0, totalMinutes - breakMinutes);
+}
+
+/**
  * Generate Excel file for single employee report
  */
 export function generateEmployeeExcel(
@@ -36,16 +103,25 @@ export function generateEmployeeExcel(
 
   // Calculate efficiency metrics
   const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
-  const maxWorkMinutes = 540; // 9 hours net work time for all
-  const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
-  const overallEfficiency = maxWorkMinutes > 0 ? (totalActualMinutes / maxWorkMinutes) * 100 : 0;
   
   // Find first task start time (in time)
   let inTime = 'N/A';
+  let availableWorkMinutes = 0;
+  let overallEfficiency = 0;
+  
   if (employeeData.detailedRecords.length > 0) {
     // Records are already sorted by date and time
     inTime = employeeData.detailedRecords[0].startTime;
+    
+    // Calculate available work time based on in time and gender
+    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+    
+    // Calculate efficiency: (Actual Work Time / Available Work Time) × 100
+    const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
+    overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
   }
+  
+  const outTime = isFemale ? '6:00 PM' : '7:00 PM';
 
   // Summary Sheet
   const summaryData = [
@@ -57,13 +133,14 @@ export function generateEmployeeExcel(
     [''],
     ['Work Schedule'],
     ['Gender:', isFemale ? 'Female' : 'Male'],
-    ['Work Hours:', isFemale ? '9:00 AM - 6:00 PM (9 hours)' : '9:00 AM - 7:00 PM (10 hours)'],
-    ['Breaks:', '60 minutes (Lunch 30m + Tea 15m x 2)'],
-    ['Net Work Time:', '540 minutes (9 hours)'],
     ['In Time:', inTime],
+    ['Out Time:', outTime],
+    ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea: 3:00-3:15 PM (15m), Tea: 5:00-5:15 PM (15m)'],
+    ['Total Breaks:', '60 minutes'],
+    ['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`],
     [''],
     ['Overall Performance'],
-    ['Total Work Time:', formatDuration(employeeData.totalWorkTime)],
+    ['Total Actual Work Time:', formatDuration(employeeData.totalWorkTime)],
     ['Total Items:', employeeData.totalItems],
     ['Average Run Rate:', employeeData.averageRunRate > 0 ? `${employeeData.averageRunRate.toFixed(2)}s / item` : 'N/A'],
     ['Overall Efficiency:', `${overallEfficiency.toFixed(1)}%`],
@@ -134,16 +211,22 @@ export function generateEmployeeExcel(
   if (employeeData.detailedRecords && employeeData.detailedRecords.length > 0) {
     // Check if employee is female (Lata or Vaishali)
     const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
-    const maxWorkMinutes = 540; // 9 hours net work time (after breaks) for all
+    
+    // Get in time and calculate available work time
+    const inTime = employeeData.detailedRecords[0].startTime;
+    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+    const outTime = isFemale ? '6:00 PM' : '7:00 PM';
     
     const detailedData = [
       ['Detailed Task Records'],
       [''],
       ['Employee:', employeeData.name],
       ['Gender:', isFemale ? 'Female' : 'Male'],
-      ['Work Hours:', isFemale ? '9:00 AM - 6:00 PM (9 hours)' : '9:00 AM - 7:00 PM (10 hours)'],
-      ['Breaks:', '60 minutes (Lunch 30m + Tea 15m x 2)'],
-      ['Net Work Time:', '540 minutes (9 hours)'],
+      ['In Time:', inTime],
+      ['Out Time:', outTime],
+      ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea: 3:00-3:15 PM (15m), Tea: 5:00-5:15 PM (15m)'],
+      ['Total Breaks:', '60 minutes'],
+      ['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`],
       [''],
       [
         'Date',
@@ -217,12 +300,14 @@ export function generateEmployeeExcel(
     
     // Add overall efficiency summary at the end
     const totalActualMinutes = Math.floor(employeeData.totalWorkTime / 60);
-    const overallEfficiency = (totalActualMinutes / maxWorkMinutes) * 100;
+    const overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
     
     detailedData.push([]);
     detailedData.push(['OVERALL EFFICIENCY']);
+    detailedData.push(['In Time:', inTime]);
+    detailedData.push(['Out Time:', outTime]);
+    detailedData.push(['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`]);
     detailedData.push(['Total Actual Work Time:', formatDuration(employeeData.totalWorkTime)]);
-    detailedData.push(['Maximum Work Time:', `${maxWorkMinutes} minutes (9 hours)`]);
     detailedData.push(['Efficiency:', `${overallEfficiency.toFixed(1)}%`]);
     detailedData.push(['Status:', overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement']);
 
@@ -317,14 +402,19 @@ export function generateAllEmployeesExcel(
   ];
 
   allEmployeesData.forEach((employee) => {
-    const maxWorkMinutes = 540; // 9 hours net work time for all
-    const totalActualMinutes = Math.floor(employee.totalWorkTime / 60);
-    const overallEfficiency = maxWorkMinutes > 0 ? (totalActualMinutes / maxWorkMinutes) * 100 : 0;
+    const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
     
     // Find first task start time (in time)
     let inTime = 'N/A';
+    let availableWorkMinutes = 0;
+    let overallEfficiency = 0;
+    
     if (employee.detailedRecords.length > 0) {
       inTime = employee.detailedRecords[0].startTime;
+      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
+      
+      const totalActualMinutes = Math.floor(employee.totalWorkTime / 60);
+      overallEfficiency = availableWorkMinutes > 0 ? (totalActualMinutes / availableWorkMinutes) * 100 : 0;
     }
     
     const status = overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement';
