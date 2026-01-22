@@ -621,6 +621,10 @@ export function generateAllEmployeesExcel(
         'Estimated End',
         'Actual End',
         'Duration',
+        'Config Time (s)',
+        'Expected Time',
+        'Actual vs Expected',
+        'Task Efficiency %',
         'Run Rate (s)',
         'Chetan Remarks',
         'Ganesh',
@@ -629,6 +633,35 @@ export function generateAllEmployeesExcel(
     ];
 
     employee.detailedRecords.forEach((record) => {
+      // Get configured time per item for this task
+      const configTimePerItem = TASK_DURATIONS_SECONDS[record.taskName] || DEFAULT_DURATION_SECONDS;
+      const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
+      const actualTime = record.duration;
+      
+      // Calculate task efficiency
+      let taskEfficiency = 0;
+      let taskEfficiencyStatus = 'N/A';
+      if (expectedTotalTime > 0 && actualTime > 0) {
+        // Task Efficiency = (Expected / Actual) * 100
+        // If actual < expected, efficiency > 100% (good - faster than expected)
+        // If actual > expected, efficiency < 100% (needs improvement - slower than expected)
+        taskEfficiency = (expectedTotalTime / actualTime) * 100;
+        taskEfficiencyStatus = `${taskEfficiency.toFixed(1)}%`;
+      }
+      
+      // Actual vs Expected comparison
+      let comparison = 'N/A';
+      if (expectedTotalTime > 0 && actualTime > 0) {
+        const diff = actualTime - expectedTotalTime;
+        if (diff > 0) {
+          comparison = `+${formatDuration(diff)} (Slower)`;
+        } else if (diff < 0) {
+          comparison = `${formatDuration(Math.abs(diff))} (Faster)`;
+        } else {
+          comparison = 'On Target';
+        }
+      }
+      
       employeeData.push([
         record.date,
         record.taskName,
@@ -638,6 +671,10 @@ export function generateAllEmployeesExcel(
         record.estimatedEndTime,
         record.actualEndTime,
         formatDuration(record.duration),
+        configTimePerItem.toString(),
+        formatDuration(expectedTotalTime),
+        comparison,
+        taskEfficiencyStatus,
         record.runRate.toFixed(2),
         record.chetanRemarks || '',
         record.ganesh || '',
@@ -657,6 +694,10 @@ export function generateAllEmployeesExcel(
       { wch: 12 }, // Estimated End
       { wch: 12 }, // Actual End
       { wch: 12 }, // Duration
+      { wch: 15 }, // Config Time
+      { wch: 15 }, // Expected Time
+      { wch: 18 }, // Actual vs Expected
+      { wch: 16 }, // Task Efficiency %
       { wch: 12 }, // Run Rate
       { wch: 25 }, // Chetan Remarks
       { wch: 15 }, // Ganesh
