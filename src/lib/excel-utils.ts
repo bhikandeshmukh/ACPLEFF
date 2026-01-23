@@ -192,6 +192,64 @@ function calculateAvailableWorkTime(
 }
 
 /**
+ * Aggregate per-day work metrics to avoid multi-day distortion
+ */
+function computeWorkSummary(
+  detailedRecords: Array<{ date: string; startTime: string; actualEndTime: string; duration: number }>,
+  isFemale: boolean
+): {
+  availableWorkMinutes: number;
+  totalUniqueWorkSeconds: number;
+  workDuringBreaksSeconds: number;
+  actualWorkSeconds: number;
+  earliestInTime: string;
+} {
+  let availableWorkMinutes = 0;
+  let totalUniqueWorkSeconds = 0;
+  let workDuringBreaksSeconds = 0;
+  let earliestInTime: string | null = null;
+
+  const recordsByDate: Record<string, typeof detailedRecords> = {};
+  const hasValidTime = (timeStr: string) => /(\d{1,2}):(\d{2})\s*(AM|PM)/i.test(timeStr || '');
+
+  for (const record of detailedRecords) {
+    if (!record.date) continue;
+    if (!recordsByDate[record.date]) {
+      recordsByDate[record.date] = [];
+    }
+    recordsByDate[record.date].push(record);
+  }
+
+  for (const records of Object.values(recordsByDate)) {
+    if (records.length === 0) continue;
+
+    const earliestRecord = records
+      .filter((r) => hasValidTime(r.startTime))
+      .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime))[0];
+
+    if (earliestRecord) {
+      availableWorkMinutes += calculateAvailableWorkTime(earliestRecord.startTime, isFemale);
+      if (!earliestInTime || parseTimeToMinutes(earliestRecord.startTime) < parseTimeToMinutes(earliestInTime)) {
+        earliestInTime = earliestRecord.startTime;
+      }
+    }
+
+    totalUniqueWorkSeconds += calculateTotalUniqueWorkTime(records);
+    workDuringBreaksSeconds += calculateWorkDuringBreaks(records);
+  }
+
+  const actualWorkSeconds = Math.max(0, totalUniqueWorkSeconds - workDuringBreaksSeconds);
+
+  return {
+    availableWorkMinutes,
+    totalUniqueWorkSeconds,
+    workDuringBreaksSeconds,
+    actualWorkSeconds,
+    earliestInTime: earliestInTime || 'N/A',
+  };
+}
+
+/**
  * Generate Excel file for single employee report
  */
 export function generateEmployeeExcel(
@@ -202,34 +260,14 @@ export function generateEmployeeExcel(
 
   // Calculate efficiency metrics
   const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
-  
-  // Find first task start time (in time)
-  let inTime = 'N/A';
-  let availableWorkMinutes = 0;
-  let overallEfficiency = 0;
-  let actualWorkSeconds = 0;
-  
-  if (employeeData.detailedRecords.length > 0) {
-    // Records are already sorted by date and time
-    inTime = employeeData.detailedRecords[0].startTime;
-    
-    // Calculate available work time (always deducts 60 min break)
-    availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
-    
-    // Calculate total unique work time (handles overlapping tasks)
-    const totalUniqueWorkSeconds = calculateTotalUniqueWorkTime(employeeData.detailedRecords);
-    
-    // Calculate work done during break times (to be excluded from actual work)
-    const workDuringBreaksSeconds = calculateWorkDuringBreaks(employeeData.detailedRecords);
-    
-    // Actual productive work time = Total unique work time - Work during breaks
-    actualWorkSeconds = Math.max(0, totalUniqueWorkSeconds - workDuringBreaksSeconds);
-    
-    // Calculate efficiency: (Actual Productive Work Time / Available Work Time) × 100
-    const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
-    overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
-  }
-  
+  const workSummary = computeWorkSummary(employeeData.detailedRecords, isFemale);
+  const inTime = workSummary.earliestInTime;
+  const availableWorkMinutes = workSummary.availableWorkMinutes;
+  const actualWorkSeconds = workSummary.actualWorkSeconds;
+  const overallEfficiency = availableWorkMinutes > 0
+    ? (Math.floor(actualWorkSeconds / 60) / availableWorkMinutes) * 100
+    : 0;
+
   const outTime = isFemale ? '6:00 PM' : '7:00 PM';
 
   // Summary Sheet
@@ -250,9 +288,9 @@ export function generateEmployeeExcel(
     [''],
     ['Overall Performance'],
     ['Total Submitted Work Time:', formatDuration(employeeData.totalWorkTime)],
-    ['Total Unique Work Time (No Overlaps):', formatDuration(actualWorkSeconds + calculateWorkDuringBreaks(employeeData.detailedRecords))],
-    ['Work During Breaks (Excluded):', formatDuration(calculateWorkDuringBreaks(employeeData.detailedRecords))],
-    ['Net Productive Work Time:', formatDuration(actualWorkSeconds)],
+    ['Total Unique Work Time (No Overlaps):', formatDuration(workSummary.totalUniqueWorkSeconds)],
+    ['Work During Breaks (Excluded):', formatDuration(workSummary.workDuringBreaksSeconds)],
+    ['Net Productive Work Time:', formatDuration(workSummary.actualWorkSeconds)],
     ['Total Items:', employeeData.totalItems],
     ['Average Run Rate:', employeeData.averageRunRate > 0 ? `${employeeData.averageRunRate.toFixed(2)}s / item` : 'N/A'],
     ['Overall Efficiency:', `${overallEfficiency.toFixed(1)}%`],
@@ -321,19 +359,12 @@ export function generateEmployeeExcel(
 
   // Detailed Records Sheet
   if (employeeData.detailedRecords && employeeData.detailedRecords.length > 0) {
-    // Check if employee is female (Lata or Vaishali)
-    const isFemale = employeeData.name.toUpperCase() === 'LATA' || employeeData.name.toUpperCase() === 'VAISHALI';
-    
-    // Get in time and calculate available work time
-    const inTime = employeeData.detailedRecords[0].startTime;
-    const availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
-    const outTime = isFemale ? '6:00 PM' : '7:00 PM';
-    
-    // Calculate work metrics
-    const totalUniqueWorkSeconds = calculateTotalUniqueWorkTime(employeeData.detailedRecords);
-    const workDuringBreaksSeconds = calculateWorkDuringBreaks(employeeData.detailedRecords);
-    const actualWorkSeconds = Math.max(0, totalUniqueWorkSeconds - workDuringBreaksSeconds);
-    
+    const inTime = workSummary.earliestInTime;
+    const totalUniqueWorkSeconds = workSummary.totalUniqueWorkSeconds;
+    const workDuringBreaksSeconds = workSummary.workDuringBreaksSeconds;
+    const actualWorkSeconds = workSummary.actualWorkSeconds;
+    const overallEfficiencySummary = availableWorkMinutes > 0 ? (Math.floor(actualWorkSeconds / 60) / availableWorkMinutes) * 100 : 0;
+
     const detailedData = [
       ['Detailed Task Records'],
       [''],
@@ -416,20 +447,17 @@ export function generateEmployeeExcel(
     });
     
     // Add overall efficiency summary at the end
-    const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
-    const overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
-    
     detailedData.push([]);
     detailedData.push(['OVERALL EFFICIENCY']);
     detailedData.push(['In Time:', inTime]);
     detailedData.push(['Out Time:', outTime]);
     detailedData.push(['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`]);
     detailedData.push(['Total Submitted Work Time:', formatDuration(employeeData.totalWorkTime)]);
-    detailedData.push(['Total Unique Work Time (No Overlaps):', formatDuration(totalUniqueWorkSeconds)]);
-    detailedData.push(['Work During Breaks (Excluded):', formatDuration(workDuringBreaksSeconds)]);
-    detailedData.push(['Net Productive Work Time:', formatDuration(actualWorkSeconds)]);
-    detailedData.push(['Efficiency:', `${overallEfficiency.toFixed(1)}%`]);
-    detailedData.push(['Status:', overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement']);
+    detailedData.push(['Total Unique Work Time (No Overlaps):', formatDuration(workSummary.totalUniqueWorkSeconds)]);
+    detailedData.push(['Work During Breaks (Excluded):', formatDuration(workSummary.workDuringBreaksSeconds)]);
+    detailedData.push(['Net Productive Work Time:', formatDuration(workSummary.actualWorkSeconds)]);
+    detailedData.push(['Efficiency:', `${overallEfficiencySummary.toFixed(1)}%`]);
+    detailedData.push(['Status:', overallEfficiencySummary >= 90 ? 'Excellent' : overallEfficiencySummary >= 75 ? 'Good' : overallEfficiencySummary >= 60 ? 'Average' : 'Needs Improvement']);
 
     const detailedSheet = XLSX.utils.aoa_to_sheet(detailedData);
     
@@ -524,23 +552,11 @@ export function generateAllEmployeesExcel(
   allEmployeesData.forEach((employee) => {
     const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
     
-    // Find first task start time (in time)
-    let inTime = 'N/A';
-    let availableWorkMinutes = 0;
-    let overallEfficiency = 0;
-    
-    if (employee.detailedRecords.length > 0) {
-      inTime = employee.detailedRecords[0].startTime;
-      availableWorkMinutes = calculateAvailableWorkTime(inTime, isFemale);
-      
-      // Calculate unique work time and exclude breaks
-      const totalUniqueWorkSeconds = calculateTotalUniqueWorkTime(employee.detailedRecords);
-      const workDuringBreaksSeconds = calculateWorkDuringBreaks(employee.detailedRecords);
-      const actualWorkSeconds = Math.max(0, totalUniqueWorkSeconds - workDuringBreaksSeconds);
-      const actualWorkMinutes = Math.floor(actualWorkSeconds / 60);
-      
-      overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
-    }
+    const workSummary = computeWorkSummary(employee.detailedRecords, isFemale);
+    const inTime = workSummary.earliestInTime;
+    const availableWorkMinutes = workSummary.availableWorkMinutes;
+    const actualWorkMinutes = Math.floor(workSummary.actualWorkSeconds / 60);
+    const overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
     
     const status = overallEfficiency >= 90 ? 'Excellent' : overallEfficiency >= 75 ? 'Good' : overallEfficiency >= 60 ? 'Average' : 'Needs Improvement';
     
@@ -738,3 +754,4 @@ export function downloadExcel(workbook: XLSX.WorkBook, filename: string): void {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
