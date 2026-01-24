@@ -570,17 +570,11 @@ export function generateAllEmployeesExcel(
       const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
       const actualTime = record.duration;
       
-      // Actual vs Expected comparison
-      let comparison = '';
+      // Calculate task efficiency: (Expected / Actual) × 100
+      let taskEfficiency = '';
       if (expectedTotalTime > 0 && actualTime > 0) {
-        const diff = actualTime - expectedTotalTime;
-        if (diff > 0) {
-          comparison = `+${formatDuration(diff)}`;
-        } else if (diff < 0) {
-          comparison = `-${formatDuration(Math.abs(diff))}`;
-        } else {
-          comparison = '';
-        }
+        const efficiency = (expectedTotalTime / actualTime) * 100;
+        taskEfficiency = efficiency.toFixed(1);
       }
       
       consolidatedData.push([
@@ -590,11 +584,11 @@ export function generateAllEmployeesExcel(
         record.quantity,
         record.startTime,
         record.actualEndTime,
-        formatDuration(record.duration),
+        Math.floor(record.duration / 60), // Duration in minutes (number only)
         configTimePerItem,
         record.runRate.toFixed(2),
-        formatDuration(expectedTotalTime),
-        comparison,
+        Math.floor(expectedTotalTime / 60), // Expected in minutes (number only)
+        taskEfficiency, // Task efficiency %
       ]);
     });
 
