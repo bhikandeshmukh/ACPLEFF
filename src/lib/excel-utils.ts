@@ -603,6 +603,9 @@ export function generateAllEmployeesExcel(
     const availableWorkMinutes = workSummary.availableWorkMinutes;
     const overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
     
+    // Calculate correct run rate: total work time (seconds) / total quantity
+    const totalRunRate = employee.totalItems > 0 ? (workSummary.actualWorkSeconds / employee.totalItems).toFixed(2) : '0';
+    
     consolidatedData.push([
       '',
       '',
@@ -610,11 +613,11 @@ export function generateAllEmployeesExcel(
       employee.totalItems,
       '',
       '',
-      formatDuration(workSummary.actualWorkSeconds),
+      actualWorkMinutes, // Total work time in minutes
       '',
-      employee.averageRunRate > 0 ? employee.averageRunRate.toFixed(2) : '0',
-      `${availableWorkMinutes}m`,
-      `${overallEfficiency.toFixed(1)}%`,
+      totalRunRate, // Total work seconds / Total quantity
+      availableWorkMinutes, // 540 or 480
+      overallEfficiency.toFixed(1), // Efficiency percentage
     ]);
     
     // Add empty row for spacing
