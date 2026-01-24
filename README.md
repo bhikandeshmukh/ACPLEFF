@@ -1,8 +1,8 @@
 # ACPL Efficiency Recorder
 
-**Status:** ✅ Production Ready | **Version:** 3.0
+**Status:** ✅ Production Ready | **Version:** 4.0
 
-A comprehensive Next.js-based task tracking application for warehouse/fulfillment center employees to record work efficiency, manage configurations, and generate detailed productivity reports with performance analytics.
+A comprehensive Next.js-based task tracking application for warehouse/fulfillment center employees to record work efficiency, manage configurations, and generate detailed productivity reports with advanced performance analytics and efficiency tracking.
 
 ## Quick Start
 
@@ -12,13 +12,14 @@ A comprehensive Next.js-based task tracking application for warehouse/fulfillmen
 # 1. Copy environment template
 cp .env.example .env.local
 
-# 2. Add your Google Sheets credentials to .env.local
+# 2. Add your Google Sheets and Firebase credentials to .env.local
 # Required:
 # - GOOGLE_PROJECT_ID
 # - GOOGLE_PRIVATE_KEY_ID
 # - GOOGLE_PRIVATE_KEY
 # - GOOGLE_CLIENT_EMAIL
 # - GOOGLE_SHEET_ID
+# - NEXT_PUBLIC_FIREBASE_* (Firebase config)
 
 # 3. Install and run
 npm install
@@ -31,9 +32,29 @@ npm run dev
 - ✅ Task submission with start/end times
 - ✅ Active task tracking with estimated completion time
 - ✅ Real-time Google Sheets integration
+- ✅ **Firebase backup database** - Automatic data backup
 - ✅ Multi-employee task management
+- ✅ **Dynamic task detection** - Tasks read from Google Sheet headers
+- ✅ **Auto-create task columns** - New tasks automatically create sheet columns
 - ✅ Mobile-responsive design with touch optimization
 - ✅ Offline support with network status indicator
+
+### Advanced Efficiency Tracking
+- ✅ **Task-wise Efficiency** - Per-task performance tracking with config comparison
+- ✅ **Overall Efficiency** - Daily efficiency based on work schedule
+- ✅ **Break Time Management** - Lunch (12:30-1:00 PM) and Tea 1 (3:00-3:15 PM) deducted
+- ✅ **Gender-based Schedules** - Male (9 AM-7 PM), Female (9 AM-6 PM)
+- ✅ **Overlapping Task Detection** - Prevents double counting of work time
+- ✅ **Work During Breaks** - Automatically excludes break time work
+- ✅ **In-Time Detection** - Uses first task start time as employee in-time
+
+### Comprehensive Reporting
+- ✅ **Consolidated Report** - All employees in single sheet with summaries
+- ✅ **Task Efficiency Columns** - Config Time, Expected Time, Actual vs Expected
+- ✅ **Performance Comparison** - Configured vs actual performance tracking
+- ✅ **Color-coded Performance** - Visual indicators for target achievement
+- ✅ **Multi-format Export** - PDF, Excel with detailed analytics
+- ✅ **Task-wise Grouping** - Reports grouped by task matching Google Sheet structure
 
 ### Configuration Management
 - ✅ **Configuration Dashboard** - Centralized task duration management
@@ -42,39 +63,197 @@ npm run dev
 - ✅ **Portal Configuration** - Manage available work portals
 - ✅ **Export Configuration** - CSV/JSON export of system settings
 
-### Advanced Reporting & Analytics
-- ✅ **Performance Comparison** - Configured vs actual performance tracking
-- ✅ **Color-coded Performance** - Visual indicators for target achievement
-- ✅ **Comprehensive Reports** - Employee, task, and portal-wise analytics
-- ✅ **Multi-format Export** - PDF, Excel with configuration sheets
-- ✅ **Real-time Monitoring** - Live active task status across all employees
-
 ### Technical Features
 - ✅ Proper timezone handling (works globally)
 - ✅ Automatic retry logic with error recovery
 - ✅ Request deduplication for performance
 - ✅ Intelligent caching system
 - ✅ Business hours validation
+- ✅ **Vercel Mumbai (BOM1) deployment** - Optimized for India region
 
-## New in Version 3.0
+## New in Version 4.0
 
-### Configuration Management System
-- **Configuration Dashboard** (`/config`) - Complete system settings management
-- **Task Duration Configuration** - Set and view time allocations per task
-- **Performance Analytics** - Compare configured vs actual performance
-- **Export Capabilities** - Download configuration as CSV/JSON
+### Efficiency Tracking System
+- **Advanced Efficiency Calculation** - Based on actual work schedule
+  - Male employees: 540 minutes available (9 AM - 7 PM, minus 45 min breaks)
+  - Female employees: 480 minutes available (9 AM - 6 PM, minus 45 min breaks)
+  - Efficiency = (Actual Work Time / Available Time) × 100
+- **Break Time Management** - Only Lunch and Tea 1 deducted (45 min total)
+  - Lunch: 12:30 PM - 1:00 PM (30 min) - Deducted
+  - Tea Break 1: 3:00 PM - 3:15 PM (15 min) - Deducted
+  - Tea Break 2: 5:00 PM - 5:15 PM (15 min) - **Counted as work time**
+- **Overlapping Task Handling** - Prevents double counting when tasks overlap
+- **Work During Breaks** - Automatically excludes work done during break times
 
-### Enhanced Reporting
-- **Task Configuration Sheets** - All exports now include configuration data
-- **Performance Comparison Tables** - Visual indicators for target vs actual
-- **Comprehensive Analytics** - Task-wise, portal-wise, and employee-wise breakdowns
-- **Real-time Status Monitoring** - Live view of all active tasks
+### Consolidated Reporting
+- **All-in-One Report Sheet** - All employees data in single sheet
+- **Employee Summary Rows** - Total quantity, duration, run rate, efficiency
+- **Task Efficiency Metrics** - Config time, expected time, actual vs expected
+- **Performance Indicators** - Visual comparison of target vs actual
 
-### User Experience Improvements
-- **Tabbed Configuration Interface** - Organized settings management
-- **Color-coded Performance Indicators** - Green for on-target, red for over-target
-- **Mobile-optimized Configuration** - Responsive design for all devices
-- **Export Options** - Multiple format support with configuration data
+### Firebase Integration
+- **Automatic Backup** - All task data backed up to Firebase
+- **Dual Database** - Google Sheets (primary) + Firebase (backup)
+- **Data Migration** - Scripts to migrate historical data to Firebase
+
+### Dynamic Task Management
+- **Header-based Detection** - Tasks read from Google Sheet Row 1
+- **Auto-column Creation** - New tasks create 8-column sections automatically
+- **Merged Headers** - Task names in merged cells with proper formatting
+- **No Overwriting** - New tasks always placed after existing tasks
+
+## Efficiency Calculation Details
+
+### Work Schedule
+- **Male Employees**: 9:00 AM - 7:00 PM (10 hours total)
+- **Female Employees** (Lata & Vaishali): 9:00 AM - 6:00 PM (9 hours total)
+
+### Break Times
+- **Lunch**: 12:30 PM - 1:00 PM (30 minutes) - **Deducted**
+- **Tea Break 1**: 3:00 PM - 3:15 PM (15 minutes) - **Deducted**
+- **Tea Break 2**: 5:00 PM - 5:15 PM (15 minutes) - **Counted** (not deducted)
+- **Total Deducted**: 45 minutes
+
+### Available Work Time Calculation
+```
+Male: (Out Time - In Time) - 45 min breaks
+Female: (Out Time - In Time) - 45 min breaks
+
+Example (Male, In Time 10:00 AM):
+= (7:00 PM - 10:00 AM) - 45 min
+= 540 min - 45 min
+= 495 minutes available
+```
+
+### Efficiency Formula
+```
+Efficiency % = (Actual Work Time / Fixed Available Time) × 100
+
+Fixed Available Time:
+- Male: 540 minutes (9 hours)
+- Female: 480 minutes (8 hours)
+
+Example:
+Actual Work: 445 minutes
+Fixed Available: 540 minutes (male)
+Efficiency: (445 / 540) × 100 = 82.4%
+```
+
+### Task Efficiency
+```
+Task Efficiency % = (Expected Time / Actual Time) × 100
+
+Expected Time = Quantity × Config Time per Item
+
+Example:
+Task: PICKING
+Quantity: 100 pieces
+Config: 40 sec/piece
+Expected: 100 × 40 = 4000 sec
+Actual: 4200 sec
+Task Efficiency: (4000 / 4200) × 100 = 95.2%
+```
+
+## Excel Report Structure
+
+### Consolidated Report Sheet
+All employees in one sheet with:
+- **Columns**: NAME, Task Name, Portal, Quantity, Start Time, Actual End, Duration, Our time (s), Run Rate (s), Expected, Actual vs Expected
+- **Summary Rows**: Total quantity, duration (minutes), run rate, available time (540/480), efficiency %
+- **Format**: Each employee's tasks followed by summary, then empty row
+
+### Individual Employee Sheets
+- **Summary Sheet**: Overall performance, work schedule, efficiency metrics
+- **Detailed Records**: All tasks with config time, expected time, efficiency %
+- **Task Configuration**: All task durations and settings
+- **Portal Summary**: Portal-wise performance breakdown
+
+## Configuration Guide
+
+### Break Time Configuration
+Break times are now hardcoded for consistency:
+- Lunch: 12:30 PM - 1:00 PM (deducted)
+- Tea 1: 3:00 PM - 3:15 PM (deducted)
+- Tea 2: 5:00 PM - 5:15 PM (counted)
+
+### Female Employee Detection
+Female employees (Lata & Vaishali) are automatically detected for:
+- Work schedule (9 AM - 6 PM)
+- Available time calculation (480 minutes)
+- Efficiency reporting
+
+### Task Duration Configuration
+Edit `src/lib/config.ts` to change task durations:
+```typescript
+export const TASK_DURATIONS_SECONDS: { [key: string]: number } = {
+  "PICKING": 40,
+  "GUN": 15,
+  "PACKING": 25,
+  // ... other tasks
+};
+```
+
+## Firebase Setup
+
+### Environment Variables
+Add to `.env.local`:
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+```
+
+### Data Migration
+To migrate existing Google Sheets data to Firebase:
+```bash
+npm run migrate:firebase:client
+```
+
+## Deployment
+
+### Vercel (Recommended)
+The app is configured for Mumbai (BOM1) region deployment:
+```json
+{
+  "regions": ["bom1"]
+}
+```
+
+Deploy to Vercel:
+```bash
+vercel --prod
+```
+
+### Environment Variables Required
+- Google Sheets credentials (GOOGLE_*)
+- Firebase credentials (NEXT_PUBLIC_FIREBASE_*)
+- GOOGLE_SHEET_ID
+
+---
+
+## Troubleshooting
+
+### Efficiency showing wrong value
+- Check if employee is correctly identified as male/female
+- Verify break times are being deducted (45 min total)
+- Ensure fixed 540/480 minutes are used, not dynamic
+
+### Tasks overlapping in report
+- System automatically merges overlapping tasks
+- Check if tasks have correct start/end times
+
+### Break time work not excluded
+- Only Lunch and Tea 1 are excluded
+- Tea 2 (5:00-5:15 PM) is counted as work time
+
+---
+
+**Version:** 4.0 - Advanced Efficiency Tracking
+**Status:** ✅ Production Ready
+**Last Updated:** January 2025
 
 ## Configuration Guide
 
@@ -397,5 +576,4 @@ For issues or questions:
 ---
 
 **Version:** 3.0 - Configuration Management
-**Status:** ✅ Production Ready
-**Last Updated:** December 2024
+

@@ -104,16 +104,17 @@ function calculateTotalUniqueWorkTime(
 
 /**
  * Calculate work time that falls during break periods (to be excluded)
- * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
+ * Only Lunch (12:30-1:00 PM) and First Tea Break (3:00-3:15 PM) are excluded
+ * Second Tea Break (5:00-5:15 PM) is NOT excluded
  * Uses merged work periods to avoid double counting
  */
 function calculateWorkDuringBreaks(
   detailedRecords: Array<{ startTime: string; actualEndTime: string; duration: number }>
 ): number {
   const breaks = [
-    { start: 12 * 60 + 30, end: 13 * 60 }, // 12:30 PM - 1:00 PM
-    { start: 15 * 60, end: 15 * 60 + 15 }, // 3:00 PM - 3:15 PM
-    { start: 17 * 60, end: 17 * 60 + 15 }, // 5:00 PM - 5:15 PM
+    { start: 12 * 60 + 30, end: 13 * 60 }, // 12:30 PM - 1:00 PM (Lunch)
+    { start: 15 * 60, end: 15 * 60 + 15 }, // 3:00 PM - 3:15 PM (First Tea Break)
+    // Second Tea Break (5:00-5:15 PM) is NOT included - work during this time counts
   ];
   
   // Get merged work periods (no overlaps)
@@ -150,8 +151,8 @@ function calculateWorkDuringBreaks(
 
 /**
  * Calculate available work time considering breaks
- * Breaks: 12:30-1:00 PM (30m), 3:00-3:15 PM (15m), 5:00-5:15 PM (15m)
- * Break time is always deducted (60 minutes total)
+ * Only Lunch (12:30-1:00 PM) and First Tea Break (3:00-3:15 PM) are deducted
+ * Second Tea Break (5:00-5:15 PM) is NOT deducted - total 45 minutes break
  */
 function calculateAvailableWorkTime(
   inTime: string, 
@@ -168,10 +169,11 @@ function calculateAvailableWorkTime(
   if (totalMinutes <= 0) return 0;
   
   // Break times in minutes from midnight
+  // Only Lunch and First Tea Break are deducted
   const breaks = [
     { start: 12 * 60 + 30, end: 13 * 60 }, // 12:30 PM - 1:00 PM (30 min)
     { start: 15 * 60, end: 15 * 60 + 15 }, // 3:00 PM - 3:15 PM (15 min)
-    { start: 17 * 60, end: 17 * 60 + 15 }, // 5:00 PM - 5:15 PM (15 min)
+    // Second Tea Break (5:00-5:15 PM) is NOT deducted
   ];
   
   let totalBreakMinutes = 0;
@@ -187,7 +189,7 @@ function calculateAvailableWorkTime(
     }
   }
   
-  // Available work time = Total time - Break time (always 60 min if all breaks fall in work time)
+  // Available work time = Total time - Break time (45 min if all breaks fall in work time)
   return Math.max(0, totalMinutes - totalBreakMinutes);
 }
 
@@ -282,8 +284,8 @@ export function generateEmployeeExcel(
     ['Gender:', isFemale ? 'Female' : 'Male'],
     ['In Time:', inTime],
     ['Out Time:', outTime],
-    ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea: 3:00-3:15 PM (15m), Tea: 5:00-5:15 PM (15m)'],
-    ['Total Breaks:', '60 minutes'],
+    ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea 1: 3:00-3:15 PM (15m) - Deducted | Tea 2: 5:00-5:15 PM (Counted)'],
+    ['Total Breaks:', '45 minutes (Lunch + Tea 1)'],
     ['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`],
     [''],
     ['Overall Performance'],
@@ -372,8 +374,8 @@ export function generateEmployeeExcel(
       ['Gender:', isFemale ? 'Female' : 'Male'],
       ['In Time:', inTime],
       ['Out Time:', outTime],
-      ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea: 3:00-3:15 PM (15m), Tea: 5:00-5:15 PM (15m)'],
-      ['Total Breaks:', '60 minutes'],
+      ['Break Times:', 'Lunch: 12:30-1:00 PM (30m), Tea 1: 3:00-3:15 PM (15m) - Deducted | Tea 2: 5:00-5:15 PM (Counted)'],
+      ['Total Breaks:', '45 minutes (Lunch + Tea 1)'],
       ['Available Work Time:', `${availableWorkMinutes} minutes (${(availableWorkMinutes / 60).toFixed(1)} hours)`],
       [''],
       [
