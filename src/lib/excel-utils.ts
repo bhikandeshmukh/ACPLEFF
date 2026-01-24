@@ -566,12 +566,16 @@ export function generateAllEmployeesExcel(
 
     const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
     const fixedAvailableMinutes = isFemale ? 480 : 540;
+    
+    let totalExpectedMinutes = 0; // Track total expected time
 
     // Add employee records
     employee.detailedRecords.forEach((record) => {
       const configTimePerItem = TASK_DURATIONS_SECONDS[record.taskName] || DEFAULT_DURATION_SECONDS;
       const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
       const expectedMinutes = Math.floor(expectedTotalTime / 60);
+      
+      totalExpectedMinutes += expectedMinutes; // Add to total
       
       // Calculate real efficiency: (Expected minutes / Fixed Available) × 100
       let realEfficiency = '';
@@ -598,7 +602,9 @@ export function generateAllEmployeesExcel(
     // Add employee summary row
     const workSummary = computeWorkSummary(employee.detailedRecords, isFemale);
     const actualWorkMinutes = Math.floor(workSummary.actualWorkSeconds / 60);
-    const overallEfficiency = fixedAvailableMinutes > 0 ? (actualWorkMinutes / fixedAvailableMinutes) * 100 : 0;
+    
+    // Calculate overall efficiency: (Total Expected / Fixed Available) × 100
+    const overallEfficiency = fixedAvailableMinutes > 0 ? (totalExpectedMinutes / fixedAvailableMinutes) * 100 : 0;
     
     // Calculate correct run rate: total work time (seconds) / total quantity
     const totalRunRate = employee.totalItems > 0 ? (workSummary.actualWorkSeconds / employee.totalItems).toFixed(2) : '0';
@@ -613,8 +619,8 @@ export function generateAllEmployeesExcel(
       actualWorkMinutes, // Total work time in minutes
       '',
       totalRunRate, // Total work seconds / Total quantity
-      fixedAvailableMinutes, // Fixed: 540 or 480
-      overallEfficiency.toFixed(1), // Efficiency percentage
+      totalExpectedMinutes, // Total expected time (sum of all tasks)
+      overallEfficiency.toFixed(1), // (Total Expected / 540 or 480) × 100
     ]);
     
     // Add empty row for spacing
