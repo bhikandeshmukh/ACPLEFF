@@ -596,12 +596,8 @@ export function generateAllEmployeesExcel(
     });
 
     // Add employee summary row
-    const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
     const workSummary = computeWorkSummary(employee.detailedRecords, isFemale);
     const actualWorkMinutes = Math.floor(workSummary.actualWorkSeconds / 60);
-    
-    // Fixed available time: 540 for male, 480 for female (not dynamic)
-    const fixedAvailableMinutes = isFemale ? 480 : 540;
     const overallEfficiency = fixedAvailableMinutes > 0 ? (actualWorkMinutes / fixedAvailableMinutes) * 100 : 0;
     
     // Calculate correct run rate: total work time (seconds) / total quantity
