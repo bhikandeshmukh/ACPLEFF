@@ -564,17 +564,20 @@ export function generateAllEmployeesExcel(
   allEmployeesData.forEach((employee) => {
     if (employee.detailedRecords.length === 0) return;
 
+    const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
+    const fixedAvailableMinutes = isFemale ? 480 : 540;
+
     // Add employee records
     employee.detailedRecords.forEach((record) => {
       const configTimePerItem = TASK_DURATIONS_SECONDS[record.taskName] || DEFAULT_DURATION_SECONDS;
       const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
-      const actualTime = record.duration;
+      const expectedMinutes = Math.floor(expectedTotalTime / 60);
       
-      // Calculate task efficiency: (Expected / Actual) × 100
-      let taskEfficiency = '';
-      if (expectedTotalTime > 0 && actualTime > 0) {
-        const efficiency = (expectedTotalTime / actualTime) * 100;
-        taskEfficiency = efficiency.toFixed(1);
+      // Calculate real efficiency: (Expected minutes / Fixed Available) × 100
+      let realEfficiency = '';
+      if (expectedMinutes > 0) {
+        const efficiency = (expectedMinutes / fixedAvailableMinutes) * 100;
+        realEfficiency = efficiency.toFixed(1);
       }
       
       consolidatedData.push([
@@ -587,8 +590,8 @@ export function generateAllEmployeesExcel(
         Math.floor(record.duration / 60), // Duration in minutes (number only)
         configTimePerItem,
         record.runRate.toFixed(2),
-        Math.floor(expectedTotalTime / 60), // Expected in minutes (number only)
-        taskEfficiency, // Task efficiency %
+        expectedMinutes, // Expected in minutes (number only)
+        realEfficiency, // Real efficiency: Expected / 540 or 480
       ]);
     });
 
