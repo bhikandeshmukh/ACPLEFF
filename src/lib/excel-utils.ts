@@ -600,7 +600,8 @@ export function generateAllEmployeesExcel(
     const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
     const workSummary = computeWorkSummary(employee.detailedRecords, isFemale);
     const actualWorkMinutes = Math.floor(workSummary.actualWorkSeconds / 60);
-    const overallEfficiency = workSummary.availableWorkMinutes > 0 ? (actualWorkMinutes / workSummary.availableWorkMinutes) * 100 : 0;
+    const availableWorkMinutes = workSummary.availableWorkMinutes;
+    const overallEfficiency = availableWorkMinutes > 0 ? (actualWorkMinutes / availableWorkMinutes) * 100 : 0;
     
     consolidatedData.push([
       '',
@@ -609,10 +610,10 @@ export function generateAllEmployeesExcel(
       employee.totalItems,
       '',
       '',
-      formatDuration(employee.totalWorkTime),
+      formatDuration(workSummary.actualWorkSeconds),
       '',
       employee.averageRunRate > 0 ? employee.averageRunRate.toFixed(2) : '0',
-      '',
+      `${availableWorkMinutes}m`,
       `${overallEfficiency.toFixed(1)}%`,
     ]);
     
