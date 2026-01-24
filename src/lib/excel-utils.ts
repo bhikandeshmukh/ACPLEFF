@@ -537,6 +537,108 @@ export function generateAllEmployeesExcel(
 ): XLSX.WorkBook {
   const workbook = XLSX.utils.book_new();
 
+  // Consolidated Report Sheet - All employees in one sheet
+  const consolidatedData = [
+    ['All Employees Consolidated Report'],
+    [''],
+    ['Report Period:', `${format(dateRange.from, 'dd/MM/yyyy')} to ${format(dateRange.to, 'dd/MM/yyyy')}`],
+    ['Generated On:', format(new Date(), 'dd/MM/yyyy hh:mm a')],
+    [''],
+    [
+      'NAME',
+      'Task Name',
+      'Portal',
+      'Quantity',
+      'Start Time',
+      'Actual End',
+      'Duration',
+      'Our time (s)',
+      'Run Rate (s)',
+      'Expected',
+      'Actual vs Expected',
+    ],
+  ];
+
+  allEmployeesData.forEach((employee) => {
+    if (employee.detailedRecords.length === 0) return;
+
+    // Add employee records
+    employee.detailedRecords.forEach((record) => {
+      const configTimePerItem = TASK_DURATIONS_SECONDS[record.taskName] || DEFAULT_DURATION_SECONDS;
+      const expectedTotalTime = record.quantity > 0 ? record.quantity * configTimePerItem : 0;
+      const actualTime = record.duration;
+      
+      // Actual vs Expected comparison
+      let comparison = '';
+      if (expectedTotalTime > 0 && actualTime > 0) {
+        const diff = actualTime - expectedTotalTime;
+        if (diff > 0) {
+          comparison = `+${formatDuration(diff)}`;
+        } else if (diff < 0) {
+          comparison = `-${formatDuration(Math.abs(diff))}`;
+        } else {
+          comparison = '';
+        }
+      }
+      
+      consolidatedData.push([
+        employee.name,
+        record.taskName,
+        record.portal,
+        record.quantity,
+        record.startTime,
+        record.actualEndTime,
+        formatDuration(record.duration),
+        configTimePerItem,
+        record.runRate.toFixed(2),
+        formatDuration(expectedTotalTime),
+        comparison,
+      ]);
+    });
+
+    // Add employee summary row
+    const isFemale = employee.name.toUpperCase() === 'LATA' || employee.name.toUpperCase() === 'VAISHALI';
+    const workSummary = computeWorkSummary(employee.detailedRecords, isFemale);
+    const actualWorkMinutes = Math.floor(workSummary.actualWorkSeconds / 60);
+    const overallEfficiency = workSummary.availableWorkMinutes > 0 ? (actualWorkMinutes / workSummary.availableWorkMinutes) * 100 : 0;
+    
+    consolidatedData.push([
+      '',
+      '',
+      '',
+      employee.totalItems,
+      '',
+      '',
+      formatDuration(employee.totalWorkTime),
+      '',
+      employee.averageRunRate > 0 ? employee.averageRunRate.toFixed(2) : '0',
+      '',
+      `${overallEfficiency.toFixed(1)}%`,
+    ]);
+    
+    // Add empty row for spacing
+    consolidatedData.push([]);
+  });
+
+  const consolidatedSheet = XLSX.utils.aoa_to_sheet(consolidatedData);
+  
+  // Set column widths
+  consolidatedSheet['!cols'] = [
+    { wch: 15 }, // NAME
+    { wch: 25 }, // Task Name
+    { wch: 25 }, // Portal
+    { wch: 10 }, // Quantity
+    { wch: 12 }, // Start Time
+    { wch: 12 }, // Actual End
+    { wch: 12 }, // Duration
+    { wch: 12 }, // Our time
+    { wch: 12 }, // Run Rate
+    { wch: 15 }, // Expected
+    { wch: 18 }, // Actual vs Expected
+  ];
+
+  XLSX.utils.book_append_sheet(workbook, consolidatedSheet, 'Consolidated Report');
+
   // Overall Summary Sheet
   const overallData = [
     ['All Employees Report'],
